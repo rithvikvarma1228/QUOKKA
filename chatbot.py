@@ -20,7 +20,7 @@ embed_model = SentenceTransformer(
 )
 
 # =====================================================
-# LOAD KNOWLEDGE BASE
+#                 LOAD KNOWLEDGE BASE                 #
 # =====================================================
 print("Loading knowledge base...")
 index = faiss.read_index("index.faiss")
