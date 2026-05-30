@@ -7,7 +7,7 @@ from pypdf import PdfReader
 from docx import Document
 
 class DocumentStore:
-    def __init__(self, model_name="BAAI/bge-small-en-v1.5", persist_dir="memory/doc_data"):
+    def __init__(self, model_name="all-MiniLM-L6-v2", persist_dir="memory/doc_data"):
         self.model_name = model_name
         self.model = None
         self.persist_dir = persist_dir
@@ -22,7 +22,7 @@ class DocumentStore:
         self.index = None
         self.chunks = []
         self.sources = []
-        self.dimension = 384
+        self.dimension = 384  # all-MiniLM-L6-v2 is also 384-dim
 
     def _load_data_if_needed(self):
         if self._data_loaded:
@@ -34,7 +34,7 @@ class DocumentStore:
             self.sources = list(np.load(self.sources_path, allow_pickle=True))
             self.dimension = self.index.d
         else:
-            self.dimension = 384 # Default for BAAI/bge-small-en-v1.5
+            self.dimension = 384  # Default for all-MiniLM-L6-v2
             self.index = faiss.IndexFlatL2(self.dimension)
             self.chunks = []
             self.sources = []
@@ -88,7 +88,6 @@ class DocumentStore:
         return text
 
     def chunk_text(self, text, chunk_size=400, overlap=50):
-        # 🔥 Paragraph-aware semantic chunking
         paragraphs = re.split(r'\n\s*\n', text)
         chunks = []
         current_chunk = ""
@@ -98,7 +97,6 @@ class DocumentStore:
             if not para:
                 continue
                 
-            # If adding this paragraph keeps us under the size limit roughly (using word count approx)
             if len((current_chunk + " " + para).split()) <= chunk_size:
                 if current_chunk:
                     current_chunk += "\n\n" + para
@@ -108,7 +106,6 @@ class DocumentStore:
                 if current_chunk:
                     chunks.append(current_chunk)
                 
-                # If a single paragraph is too long, split by sentences
                 if len(para.split()) > chunk_size:
                     sentences = re.split(r'(?<=[.!?]) +', para)
                     temp_chunk = ""
@@ -138,11 +135,9 @@ class DocumentStore:
         if not file_chunks:
             return False
             
-        # Create embeddings in batches
         vectors = self.get_model().encode(file_chunks, batch_size=64, normalize_embeddings=True)
         vectors = np.array(vectors).astype("float32")
         
-        # Add to index
         self._load_data_if_needed()
         self.index.add(vectors)
         self.chunks.extend(file_chunks)
@@ -163,7 +158,7 @@ class DocumentStore:
         distances, indices = self.index.search(vec, k)
         
         results = []
-        logging.debug("--- Retrieval Debugging for Query: '%s' ---", query)
+        logging.debug("--- Retrieval for Query: '%s' ---", query)
         for dist, idx in zip(distances[0], indices[0]):
             if idx != -1:
                 score = float(dist)
