@@ -13,32 +13,32 @@ class DocumentStore:
         self.persist_dir = persist_dir
         if not os.path.exists(self.persist_dir):
             os.makedirs(self.persist_dir)
-            
+
         self.index_path = os.path.join(self.persist_dir, "doc_index.faiss")
         self.chunks_path = os.path.join(self.persist_dir, "doc_chunks.npy")
         self.sources_path = os.path.join(self.persist_dir, "doc_sources.npy")
-        
+
         self._data_loaded = False
         self.index = None
         self.chunks = []
         self.sources = []
-        self.dimension = 384  # all-MiniLM-L6-v2 is also 384-dim
+        self.dimension = 384  # all-MiniLM-L6-v2 is 384-dim
 
     def _load_data_if_needed(self):
         if self._data_loaded:
             return
-            
+
         if os.path.exists(self.index_path):
             self.index = faiss.read_index(self.index_path)
             self.chunks = list(np.load(self.chunks_path, allow_pickle=True))
             self.sources = list(np.load(self.sources_path, allow_pickle=True))
             self.dimension = self.index.d
         else:
-            self.dimension = 384  # Default for all-MiniLM-L6-v2
+            self.dimension = 384
             self.index = faiss.IndexFlatL2(self.dimension)
             self.chunks = []
             self.sources = []
-            
+
         self._data_loaded = True
 
     def has_documents(self):
@@ -56,9 +56,9 @@ class DocumentStore:
             self.index = faiss.IndexFlatL2(self.dimension)
         elif self.index.ntotal > 0 and self.index.d != model_dim:
             raise RuntimeError(
-                f"Embedding model dimension mismatch: index has {self.index.d}d "
-                f"but model '{self.model_name}' produces {model_dim}d vectors. "
-                f"Delete memory/doc_data/ and re-index your documents."
+                f"Embedding dimension mismatch: index={self.index.d}d "
+                f"but model produces {model_dim}d. "
+                f"Delete memory/doc_data/ and re-upload documents."
             )
         return model
 
@@ -77,8 +77,12 @@ class DocumentStore:
                     text = f.read()
             elif ext == ".pdf":
                 reader = PdfReader(file_path)
-                for page in reader.pages:
-                    text += page.extract_text() + "\n"
+                # Limit to 50 pages max to save RAM
+                pages = reader.pages[:50]
+                for page in pages:
+                    extracted = page.extract_text()
+                    if extracted:
+                        text += extracted + "\n"
             elif ext == ".docx":
                 doc = Document(file_path)
                 for para in doc.paragraphs:
@@ -91,12 +95,12 @@ class DocumentStore:
         paragraphs = re.split(r'\n\s*\n', text)
         chunks = []
         current_chunk = ""
-        
+
         for para in paragraphs:
             para = para.strip()
             if not para:
                 continue
-                
+
             if len((current_chunk + " " + para).split()) <= chunk_size:
                 if current_chunk:
                     current_chunk += "\n\n" + para
@@ -105,7 +109,7 @@ class DocumentStore:
             else:
                 if current_chunk:
                     chunks.append(current_chunk)
-                
+
                 if len(para.split()) > chunk_size:
                     sentences = re.split(r'(?<=[.!?]) +', para)
                     temp_chunk = ""
@@ -119,30 +123,41 @@ class DocumentStore:
                     current_chunk = temp_chunk
                 else:
                     current_chunk = para
-                    
+
         if current_chunk:
             chunks.append(current_chunk)
-            
+
         return chunks
 
     def process_file(self, file_path, filename):
         text = self.extract_text(file_path)
         if not text.strip():
             return False
-            
+
         file_chunks = self.chunk_text(text)
-        
+
         if not file_chunks:
             return False
-            
-        vectors = self.get_model().encode(file_chunks, batch_size=64, normalize_embeddings=True)
+
+        # Limit chunks to prevent RAM overflow — max 100 chunks per document
+        MAX_CHUNKS = 100
+        if len(file_chunks) > MAX_CHUNKS:
+            print(f"Document has {len(file_chunks)} chunks, truncating to {MAX_CHUNKS}")
+            file_chunks = file_chunks[:MAX_CHUNKS]
+
+        # Small batch size to prevent RAM spike during encoding
+        vectors = self.get_model().encode(
+            file_chunks,
+            batch_size=16,
+            normalize_embeddings=True
+        )
         vectors = np.array(vectors).astype("float32")
-        
+
         self._load_data_if_needed()
         self.index.add(vectors)
         self.chunks.extend(file_chunks)
         self.sources.extend([filename] * len(file_chunks))
-        
+
         self.save()
         return True
 
@@ -150,13 +165,13 @@ class DocumentStore:
         self._load_data_if_needed()
         if self.index.ntotal == 0:
             return []
-            
+
         vec = self.get_model().encode([query], normalize_embeddings=True)
         vec = np.array(vec).astype("float32")
-        
+
         k = min(top_k, self.index.ntotal)
         distances, indices = self.index.search(vec, k)
-        
+
         results = []
         logging.debug("--- Retrieval for Query: '%s' ---", query)
         for dist, idx in zip(distances[0], indices[0]):
@@ -164,14 +179,15 @@ class DocumentStore:
                 score = float(dist)
                 chunk_text = self.chunks[idx]
                 source = self.sources[idx]
-                logging.debug("[Match] Score: %.4f | Source: %s | Chunk: %s...", score, source, chunk_text[:100])
+                logging.debug("[Match] Score: %.4f | Source: %s | Chunk: %s...",
+                              score, source, chunk_text[:100])
                 results.append({
                     "text": chunk_text,
                     "source": source,
                     "score": score
                 })
         logging.debug("-------------------------------------------------")
-                
+
         return results
 
 doc_store = DocumentStore()

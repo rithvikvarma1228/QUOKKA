@@ -1,6 +1,6 @@
 import os
 import threading
-from flask import Flask, render_template, redirect, session
+from flask import Flask, render_template, redirect, session, jsonify
 from flask_mail import Mail
 from dotenv import load_dotenv
 from routes.chat import chat_bp
@@ -17,6 +17,9 @@ app = Flask(__name__)
 # ----------------------------------------
 app.secret_key = os.environ.get("SECRET_KEY", "quokka-dev-secret")
 
+# File upload limit — 15MB
+app.config["MAX_CONTENT_LENGTH"] = 15 * 1024 * 1024
+
 # Flask-Mail config
 app.config["MAIL_SERVER"]         = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
 app.config["MAIL_PORT"]           = int(os.environ.get("MAIL_PORT", 587))
@@ -27,6 +30,13 @@ app.config["MAIL_PASSWORD"]       = os.environ.get("MAIL_PASSWORD")
 app.config["MAIL_DEFAULT_SENDER"] = ("QUOKKA AI", os.environ.get("MAIL_USERNAME"))
 
 mail = Mail(app)
+
+# ----------------------------------------
+# ERROR HANDLERS
+# ----------------------------------------
+@app.errorhandler(413)
+def file_too_large(e):
+    return jsonify({"error": "File too large. Maximum size is 15MB."}), 413
 
 # ----------------------------------------
 # REGISTER BLUEPRINTS
@@ -72,40 +82,42 @@ def profile_page():
     return render_template("profile.html")
 
 # ----------------------------------------
-# WARMUP — background thread
-# Runs AFTER server starts accepting requests
-# so browser loads instantly
+# WARMUP — lightweight, RAM-safe
 # ----------------------------------------
 def warmup():
-    print("⏳ [WARMUP] Loading models into memory...")
+    import time
+    time.sleep(1)
+    print("⏳ [WARMUP] Starting...")
 
-    # Only load embedding model if RAG is enabled
-    # Skip on Render free tier to save RAM
-    if os.environ.get("ENABLE_RAG", "false") == "true":
+    enable_rag = os.environ.get("ENABLE_RAG", "false").lower() == "true"
+
+    if enable_rag:
         try:
             from memory.document_store import doc_store
+            doc_store._load_data_if_needed()
             if doc_store.has_documents():
                 from models.embedding_manager import get_embedding_model
-                get_embedding_model("BAAI/bge-small-en-v1.5")
-                print("✅ [WARMUP] Embedding model ready")
+                get_embedding_model("all-MiniLM-L6-v2")
+                print("✅ [WARMUP] Embedding model + FAISS ready")
+            else:
+                print("✅ [WARMUP] No documents — skipping embedding load")
         except Exception as e:
-            print(f"⚠️  [WARMUP] Embedding skipped: {e}")
+            print(f"⚠️  [WARMUP] RAG warmup failed: {e}")
     else:
-        print("✅ [WARMUP] RAG disabled — skipping embedding model")
+        print("✅ [WARMUP] RAG disabled — skipping embedding model (saves RAM)")
 
-    print("🚀 [WARMUP] QUOKKA is fully ready!")
+    print("🚀 [WARMUP] QUOKKA is ready!")
+
 # ----------------------------------------
 # RUN SERVER
 # ----------------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
 
-    # Start warmup in background AFTER Flask starts
     t = threading.Thread(target=warmup, daemon=True)
     t.start()
 
     print(f"🌐 Starting QUOKKA on http://localhost:{port}")
-    print("⏳ Models warming up in background...")
 
     app.run(
         host="0.0.0.0",
