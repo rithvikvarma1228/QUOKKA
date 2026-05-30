@@ -1,190 +1,127 @@
 import os
-import numpy as np
-import faiss
-import requests
+import threading
+from flask import Flask, render_template, redirect, session
+from flask_mail import Mail
+from dotenv import load_dotenv
+from routes.chat import chat_bp
+from routes.sessions import sessions_bp
+from routes.upload import upload_bp
+from routes.auth import auth_bp
 
-from sentence_transformers import SentenceTransformer
+load_dotenv()
 
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
-import uvicorn
+app = Flask(__name__)
 
+# ----------------------------------------
+# APP CONFIG
+# ----------------------------------------
+app.secret_key = os.environ.get("SECRET_KEY", "quokka-dev-secret")
 
-# ----------------------------
-# LOAD EMBEDDING MODEL
-# ----------------------------
-print("Loading embedding model...")
+# Flask-Mail config
+app.config["MAIL_SERVER"]         = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
+app.config["MAIL_PORT"]           = int(os.environ.get("MAIL_PORT", 587))
+app.config["MAIL_USE_TLS"]        = True
+app.config["MAIL_USE_SSL"]        = False
+app.config["MAIL_USERNAME"]       = os.environ.get("MAIL_USERNAME")
+app.config["MAIL_PASSWORD"]       = os.environ.get("MAIL_PASSWORD")
+app.config["MAIL_DEFAULT_SENDER"] = ("QUOKKA AI", os.environ.get("MAIL_USERNAME"))
 
-embed_model = SentenceTransformer("all-MiniLM-L6-v2")
+mail = Mail(app)
 
-print("Embedding model loaded!")
+# ----------------------------------------
+# REGISTER BLUEPRINTS
+# ----------------------------------------
+app.register_blueprint(chat_bp)
+app.register_blueprint(sessions_bp)
+app.register_blueprint(upload_bp)
+app.register_blueprint(auth_bp)
 
+# ----------------------------------------
+# PAGE ROUTES
+# ----------------------------------------
+@app.route("/")
+def serve_index():
+    if "user_id" not in session:
+        return redirect("/login")
+    return render_template("index.html")
 
-# ----------------------------
-# LOAD VECTOR DATABASE
-# ----------------------------
-print("Loading knowledge base...")
+@app.route("/login")
+def login_page():
+    if "user_id" in session:
+        return redirect("/")
+    return render_template("login.html")
 
-index = faiss.read_index("index.faiss")
-chunks = np.load("chunks.npy", allow_pickle=True)
-sources_data = np.load("sources.npy", allow_pickle=True)
+@app.route("/signup")
+def signup_page():
+    if "user_id" in session:
+        return redirect("/")
+    return render_template("signup.html")
 
-print("Knowledge base loaded!")
+@app.route("/forgot-password")
+def forgot_password_page():
+    return render_template("forgot_password.html")
 
+@app.route("/reset-password")
+def reset_password_page():
+    return render_template("reset_password.html")
 
-# ----------------------------
-# MISTRAL (OLLAMA)
-# ----------------------------
-def ask_mistral(prompt):
+@app.route("/profile")
+def profile_page():
+    if "user_id" not in session:
+        return redirect("/login")
+    return render_template("profile.html")
 
-    response = requests.post(
-        "http://localhost:11434/api/generate",
-        json={
-            "model": "mistral",
-            "prompt": prompt,
-            "stream": False
-        }
-    )
+# ----------------------------------------
+# WARMUP — background thread
+# Runs AFTER server starts accepting requests
+# so browser loads instantly
+# ----------------------------------------
+def warmup():
+    import time
+    # Small delay so Flask fully starts first
+    time.sleep(1)
 
-    return response.json()["response"]
+    print("⏳ [WARMUP] Loading models into memory...")
 
+    # Step 1: Load embedding model (only needed for RAG/document search)
+    # Skip if using Groq and no documents uploaded yet
+    try:
+        from memory.document_store import doc_store
+        if doc_store.has_documents():
+            from models.embedding_manager import get_embedding_model
+            get_embedding_model("BAAI/bge-small-en-v1.5")
+            print("✅ [WARMUP] Embedding model ready")
+        else:
+            print("✅ [WARMUP] No documents found — skipping embedding model load")
+    except Exception as e:
+        print(f"⚠️  [WARMUP] Embedding model failed: {e}")
 
-# ----------------------------
-# RETRIEVAL FUNCTION
-# ----------------------------
-def retrieve_context(query, k=12):
+    # Step 2: Load FAISS document index
+    try:
+        from memory.document_store import doc_store
+        doc_store._load_data_if_needed()
+        print("✅ [WARMUP] Document index ready")
+    except Exception as e:
+        print(f"⚠️  [WARMUP] Document index failed: {e}")
 
-    queries = [
-        query,
-        query + " crystal defect",
-        query + " Frenkel defect Schottky defect definition"
-    ]
+    print("🚀 [WARMUP] QUOKKA is fully ready!")
 
-    all_indices = []
-
-    for q in queries:
-
-        q_vec = embed_model.encode([q], normalize_embeddings=True)
-        q_vec = np.array(q_vec).astype("float32")
-
-        distances, indices = index.search(q_vec, k)
-
-        all_indices.extend(indices[0])
-
-    unique_indices = list(set(all_indices))
-
-    context = ""
-    sources = []
-
-    for idx in unique_indices:
-
-        chunk = chunks[idx]
-
-        if len(chunk) < 120:
-            continue
-
-        if len(context) + len(chunk) > 2000:
-            break
-
-        context += chunk + "\n"
-        sources.append(sources_data[idx])
-
-    return context, sources
-
-
-# ----------------------------
-# CHATBOT LOGIC
-# ----------------------------
-def chatbot_response(query):
-
-    context, sources = retrieve_context(query)
-
-    print("\n============================")
-    print("USER QUESTION:", query)
-    print("\nRETRIEVED CONTEXT:\n")
-    print(context[:1500])
-    print("\n============================\n")
-
-    if len(context.strip()) < 50:
-        return "⚠️ No reliable context found. Try another question."
-
-    prompt = f"""
-You are QUOKKA, an expert materials science assistant.
-
-Use ONLY the information from the context.
-
-Rules:
-- Summarize clearly.
-- Maximum 5 sentences.
-- Use bullet points when comparing concepts.
-- Ignore corrupted text.
-Answer ONLY using the context.
-If the answer is not present in the context, say:
-"The document does not contain enough information."
-Do not use outside knowledge.
-
-Context:
-{context}
-
-Question: {query}
-
-Answer:
-"""
-
-    answer = ask_mistral(prompt)
-
-    answer += "\n\nSources:\n- " + "\n- ".join(set(sources))
-
-    return answer
-
-
-# ----------------------------
-# FASTAPI SERVER
-# ----------------------------
-app = FastAPI()
-
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
-
-
-class ChatRequest(BaseModel):
-    message: str
-
-
-@app.get("/")
-async def serve_index():
-    return FileResponse(os.path.join("frontend", "index.html"))
-
-
-@app.post("/api/chat")
-async def api_chat(request: ChatRequest):
-
-    full_response = chatbot_response(request.message)
-
-    if "Sources:" in full_response:
-
-        main_answer, sources_text = full_response.split("Sources:", 1)
-
-        sources_list = [
-            s.strip().replace("-", "").strip()
-            for s in sources_text.split("\n")
-            if s.strip()
-        ]
-
-    else:
-        main_answer = full_response
-        sources_list = []
-
-    return {
-        "answer": main_answer.strip(),
-        "sources": sources_list
-    }
-
-
-# ----------------------------
-# LAUNCH SERVER
-# ----------------------------
+# ----------------------------------------
+# RUN SERVER
+# ----------------------------------------
 if __name__ == "__main__":
-    print("Starting FastAPI server on port 8000...")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+
+    # Start warmup in background AFTER Flask starts
+    t = threading.Thread(target=warmup, daemon=True)
+    t.start()
+
+    print(f"🌐 Starting QUOKKA on http://localhost:{port}")
+    print("⏳ Models warming up in background...")
+
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=False,
+        use_reloader=False
+    )

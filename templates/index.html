@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quokka - AI Assistant</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="/static/css/styles.css" />
+  </head>
+  <body class="light-mode">
+    <div class="app-container">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <button id="new-chat-btn" class="btn primary-btn">
+            <i class="ph ph-plus"></i> New Chat
+          </button>
+          <div class="search-box">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="text" id="chat-search" placeholder="Search chats..." />
+          </div>
+        </div>
+        <div class="chat-list" id="chat-list">
+          <!-- Chats will be injected here -->
+        </div>
+        <div class="sidebar-footer">
+          <a href="/profile" class="user-profile" style="text-decoration: none">
+            <div class="avatar" id="sidebar-avatar">Q</div>
+            <span class="username" id="sidebar-username">User</span>
+          </a>
+          <div style="display: flex; gap: 10px">
+            <button class="icon-btn" id="settings-btn" title="Settings">
+              <i class="ph ph-gear"></i>
+            </button>
+            <button class="icon-btn" id="logout-btn" title="Logout">
+              <i class="ph ph-sign-out"></i>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <header class="chat-header">
+          <div class="model-selector">
+            <select id="model-select" class="dropdown">
+              <option value="llama3.1:8b">LLaMA 3.1 8B ⚡ Fast</option>
+              <option value="llama3.1:70b">LLaMA 3.3 70B 🔥 Smart</option>
+            </select>
+          </div>
+          <div class="header-tools">
+            <button class="icon-btn" id="export-txt-btn" title="Export as TXT">
+              <i class="ph ph-download-simple"></i> TXT
+            </button>
+            <button class="icon-btn" id="export-pdf-btn" title="Export as PDF">
+              <i class="ph ph-file-pdf"></i> PDF
+            </button>
+            <div class="privacy-toggle-wrapper" style="margin-left: 15px">
+              <label
+                class="toggle-label"
+                title="Private Mode avoids all server storage"
+              >
+                <input type="checkbox" id="private-chat-checkbox" />
+                <span class="toggle-switch"></span>
+                <span class="lock-icon"><i class="ph ph-lock"></i></span>
+                Private Chat
+              </label>
+            </div>
+          </div>
+        </header>
+
+        <div id="private-warning" class="private-warning" style="display: none">
+          <i class="ph ph-shield-warning"></i> Private Mode Active (Messages are
+          not saved)
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+          <div class="message bot welcome-message">
+            <div class="msg-avatar"><i class="ph-fill ph-robot"></i></div>
+            <div class="msg-bubble">
+              Hello! I'm Quokka, your advanced AI assistant. How can I help you
+              today?
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input-wrapper">
+          <div
+            class="file-upload-indicator"
+            id="file-upload-indicator"
+            style="display: none"
+          >
+            <i class="ph ph-file-text"></i>
+            <span id="file-name">Document.pdf</span>
+            <i class="ph ph-x clear-file" id="clear-file"></i>
+          </div>
+          <div class="input-box">
+            <label
+              for="file-upload"
+              class="upload-btn"
+              title="Upload Document for RAG"
+            >
+              <i class="ph ph-paperclip"></i>
+            </label>
+            <input
+              type="file"
+              id="file-upload"
+              style="display: none"
+              accept=".pdf,.txt,.docx"
+            />
+            <textarea
+              id="chat-input"
+              placeholder="Message Quokka..."
+              rows="1"
+            ></textarea>
+            <button class="send-btn" id="send-btn">
+              <i class="ph-fill ph-arrow-up"></i>
+            </button>
+          </div>
+          <div class="footer-text">
+            Quokka can make mistakes. Consider verifying important information.
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal" style="display: none">
+      <div class="modal-content">
+        <span class="close-modal" id="close-settings">&times;</span>
+        <h2>Settings</h2>
+        <div class="settings-group">
+          <label
+            >Temperature (Creativity): <span id="temp-val">0.7</span></label
+          >
+          <input
+            type="range"
+            id="temp-slider"
+            min="0"
+            max="1"
+            step="0.1"
+            value="0.7"
+          />
+        </div>
+        <div class="settings-group">
+          <label class="toggle-label">
+            <input type="checkbox" id="memory-toggle" checked />
+            <span class="toggle-switch"></span>
+            Enable Memory Context
+          </label>
+        </div>
+        <div class="settings-group">
+          <p
+            style="
+              font-size: 0.82rem;
+              color: var(--text-secondary);
+              margin-top: 8px;
+            "
+          >
+            <strong>Model guide:</strong><br />
+            🚀 TinyLlama — fastest, basic answers, great for testing<br />
+            ⚡ Phi-2 — fast, good quality, recommended default<br />
+            ⚖️ Mistral — balanced speed and quality<br />
+            🧠 LLaMA 3.1 8B — slowest, best answers
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- marked.js for markdown rendering — must be before app.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/static/js/app.js"></script>
+  </body>
+</html>

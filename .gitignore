@@ -1,17 +1,8 @@
+.env
 venv/
 __pycache__/
+*.db
 *.pyc
-
-# Python
-__pycache__/
-*.pyc
-
-# AI / embeddings / indexes
-*.npy
-*.faiss
-
-# Data files
+memory/doc_data/
 data/
-
-# OS
-.DS_Store
+uploads/    

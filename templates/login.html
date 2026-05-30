@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QUOKKA — Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body class="auth-body">
+  <div class="auth-bg">
+    <div class="auth-card" style="max-width:420px;">
+      <div class="auth-brand">QUOKKA</div>
+      <p class="auth-subtitle">AI Assistant</p>
+
+      <div class="error" id="login-error"></div>
+
+      <div id="login-form">
+        <div class="field">
+          <label class="label" for="email">Email</label>
+          <input class="input" id="email" type="email" placeholder="you@example.com" autocomplete="email" />
+        </div>
+
+        <div class="field">
+          <label class="label" for="password">Password</label>
+          <div class="pw-wrap">
+            <input class="input" id="password" type="password" placeholder="••••••••" autocomplete="current-password" />
+            <span class="pw-toggle" onclick="togglePasswordVisibility('password','pw-eye')">
+              <i id="pw-eye" class="ph ph-eye"></i>
+            </span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="login-btn">
+          Login <span class="spinner" id="login-spinner" style="display:none;"></span>
+        </button>
+
+        <div class="links">
+          <a class="link" href="/forgot-password">Forgot password?</a>
+          <a class="link" href="/signup">Don't have an account? Sign up</a>
+        </div>
+      </div>
+
+      <div id="not-verified-panel" style="display:none;margin-top:16px;">
+        <div class="success" id="resend-success"></div>
+        <button class="btn btn-secondary" id="resend-otp-btn">Resend OTP</button>
+      </div>
+
+      <!-- OTP modal -->
+      <div id="otp-modal" class="otp-panel" style="margin-top:18px;">
+        <p class="auth-subtitle" style="margin-bottom:8px;">Enter the 6-digit code we sent to your email.</p>
+        <div class="error" id="otp-error"></div>
+        <div class="otp-inputs" id="otp-inputs">
+          <input class="otp-box" inputmode="numeric" maxlength="1" data-otp />
+          <input class="otp-box" inputmode="numeric" maxlength="1" data-otp />
+          <input class="otp-box" inputmode="numeric" maxlength="1" data-otp />
+          <input class="otp-box" inputmode="numeric" maxlength="1" data-otp />
+          <input class="otp-box" inputmode="numeric" maxlength="1" data-otp />
+          <input class="otp-box" inputmode="numeric" maxlength="1" data-otp />
+        </div>
+        <button class="btn btn-primary" id="verify-otp-btn">Verify Email</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/auth.js"></script>
+  <script>
+    const loginBtn = document.getElementById("login-btn");
+    const spinner = document.getElementById("login-spinner");
+    const emailEl = document.getElementById("email");
+    const passwordEl = document.getElementById("password");
+    const notVerifiedPanel = document.getElementById("not-verified-panel");
+    const resendBtn = document.getElementById("resend-otp-btn");
+    const otpModal = document.getElementById("otp-modal");
+    const verifyOtpBtn = document.getElementById("verify-otp-btn");
+
+    setupOTPInputs("#otp-inputs");
+
+    function getOtpValue() {
+      const boxes = Array.from(document.querySelectorAll("#otp-inputs input[data-otp]"));
+      return boxes.map(b => (b.value || "").trim()).join("");
+    }
+
+    async function doLogin() {
+      hideError("login-error");
+      notVerifiedPanel.style.display = "none";
+      otpModal.style.display = "none";
+
+      const email = (emailEl.value || "").trim();
+      const password = passwordEl.value || "";
+
+      loginBtn.disabled = true;
+      spinner.style.display = "inline-block";
+      const { ok, json } = await postJson("/api/auth/login", { email, password });
+      spinner.style.display = "none";
+      loginBtn.disabled = false;
+
+      if (ok && json.success) {
+        window.location.href = "/";
+        return;
+      }
+
+      if (json && json.error === "not_verified") {
+        showError("login-error", json.message || "Please verify your email first");
+        notVerifiedPanel.style.display = "block";
+        return;
+      }
+
+      showError("login-error", (json && json.message) || "Login failed");
+    }
+
+    loginBtn.addEventListener("click", doLogin);
+    passwordEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") doLogin();
+    });
+
+    resendBtn.addEventListener("click", async () => {
+      hideError("otp-error");
+      showSuccess("resend-success", "");
+      const email = (emailEl.value || "").trim();
+      const { ok, json } = await postJson("/api/auth/resend-otp", { email });
+      if (ok && json.success) {
+        showSuccess("resend-success", "New OTP sent. Enter it below.");
+        otpModal.style.display = "block";
+      } else {
+        showError("login-error", (json && json.message) || "Failed to resend OTP");
+      }
+    });
+
+    verifyOtpBtn.addEventListener("click", async () => {
+      hideError("otp-error");
+      const email = (emailEl.value || "").trim();
+      const otp = getOtpValue();
+      const { ok, json } = await postJson("/api/auth/verify-otp", { email, otp });
+      if (ok && json.success) {
+        window.location.href = "/";
+        return;
+      }
+      showError("otp-error", (json && json.message) || "Verification failed");
+    });
+  </script>
+</body>
+</html>
+

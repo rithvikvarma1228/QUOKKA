@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QUOKKA — Sign up</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body class="auth-body">
+  <div class="auth-bg">
+    <div class="auth-card" style="max-width:440px;">
+      <div class="auth-brand">QUOKKA</div>
+      <p class="auth-subtitle">Create your account</p>
+
+      <div class="error" id="signup-error"></div>
+
+      <div id="signup-form">
+        <div class="field">
+          <label class="label" for="name">Full name</label>
+          <input class="input" id="name" type="text" placeholder="Your name" autocomplete="name" />
+        </div>
+
+        <div class="field">
+          <label class="label" for="email">Email</label>
+          <input class="input" id="email" type="email" placeholder="you@example.com" autocomplete="email" />
+        </div>
+
+        <div class="field">
+          <label class="label" for="password">Password</label>
+          <div class="pw-wrap">
+            <input class="input" id="password" type="password" placeholder="••••••••" autocomplete="new-password" />
+            <span class="pw-toggle" onclick="togglePasswordVisibility('password','pw-eye')">
+              <i id="pw-eye" class="ph ph-eye"></i>
+            </span>
+          </div>
+          <div class="strength"><div id="strength-bar"></div></div>
+          <div class="strength-label">Strength: <span id="strength-label">Weak</span></div>
+        </div>
+
+        <div class="field">
+          <label class="label" for="confirm">Confirm password</label>
+          <div class="pw-wrap">
+            <input class="input" id="confirm" type="password" placeholder="••••••••" autocomplete="new-password" />
+            <span class="pw-toggle" onclick="togglePasswordVisibility('confirm','pw-eye-2')">
+              <i id="pw-eye-2" class="ph ph-eye"></i>
+            </span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="signup-btn">
+          Create Account <span class="spinner" id="signup-spinner" style="display:none;"></span>
+        </button>
+
+        <div class="links">
+          <a class="link" href="/login">Already have an account? Login</a>
+        </div>
+      </div>
+
+      <div class="otp-panel" id="otp-panel">
+        <p class="auth-subtitle" style="margin-bottom:6px;color:var(--text);font-weight:600;">Check your email</p>
+        <p class="auth-subtitle" id="otp-subtitle" style="margin-top:0;">We sent a 6-digit code to</p>
+        <div class="error" id="otp-error"></div>
+
+        <div class="otp-inputs" id="otp-inputs">
+          <input class="otp-box" inputmode="numeric" maxlength="1" data-otp />
+          <input class="otp-box" inputmode="numeric" maxlength="1" data-otp />
+          <input class="otp-box" inputmode="numeric" maxlength="1" data-otp />
+          <input class="otp-box" inputmode="numeric" maxlength="1" data-otp />
+          <input class="otp-box" inputmode="numeric" maxlength="1" data-otp />
+          <input class="otp-box" inputmode="numeric" maxlength="1" data-otp />
+        </div>
+
+        <button class="btn btn-primary" id="verify-btn">Verify Email</button>
+        <div style="height:10px;"></div>
+        <button class="btn btn-secondary" id="resend-btn">Resend OTP</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/auth.js"></script>
+  <script>
+    const nameEl = document.getElementById("name");
+    const emailEl = document.getElementById("email");
+    const passwordEl = document.getElementById("password");
+    const confirmEl = document.getElementById("confirm");
+    const signupBtn = document.getElementById("signup-btn");
+    const signupSpinner = document.getElementById("signup-spinner");
+
+    const signupForm = document.getElementById("signup-form");
+    const otpPanel = document.getElementById("otp-panel");
+    const otpSubtitle = document.getElementById("otp-subtitle");
+    const verifyBtn = document.getElementById("verify-btn");
+    const resendBtn = document.getElementById("resend-btn");
+
+    setupOTPInputs("#otp-inputs");
+
+    passwordEl.addEventListener("input", () => {
+      updateStrengthBar(passwordEl.value, "strength-bar", "strength-label");
+    });
+
+    function getOtpValue() {
+      const boxes = Array.from(document.querySelectorAll("#otp-inputs input[data-otp]"));
+      return boxes.map(b => (b.value || "").trim()).join("");
+    }
+
+    async function doSignup() {
+      hideError("signup-error");
+      hideError("otp-error");
+
+      const name = (nameEl.value || "").trim();
+      const email = (emailEl.value || "").trim();
+      const password = passwordEl.value || "";
+      const confirm = confirmEl.value || "";
+
+      if (password !== confirm) {
+        showError("signup-error", "Passwords do not match.");
+        return;
+      }
+
+      signupBtn.disabled = true;
+      signupSpinner.style.display = "inline-block";
+      const { ok, json } = await postJson("/api/auth/register", { name, email, password });
+      signupSpinner.style.display = "none";
+      signupBtn.disabled = false;
+
+      if (ok && json.success) {
+        signupForm.style.display = "none";
+        otpPanel.style.display = "block";
+        otpSubtitle.textContent = `We sent a 6-digit code to ${email}`;
+        startResendCountdown("resend-btn", 60);
+        return;
+      }
+
+      showError("signup-error", (json && json.message) || "Signup failed");
+    }
+
+    signupBtn.addEventListener("click", doSignup);
+    confirmEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") doSignup();
+    });
+
+    verifyBtn.addEventListener("click", async () => {
+      hideError("otp-error");
+      const email = (emailEl.value || "").trim().toLowerCase();
+      const otp = getOtpValue();
+      const { ok, json } = await postJson("/api/auth/verify-otp", { email, otp });
+      if (ok && json.success) {
+        window.location.href = "/";
+        return;
+      }
+      showError("otp-error", (json && json.message) || "Verification failed");
+    });
+
+    resendBtn.addEventListener("click", async () => {
+      hideError("otp-error");
+      const email = (emailEl.value || "").trim().toLowerCase();
+      const { ok, json } = await postJson("/api/auth/resend-otp", { email });
+      if (ok && json.success) {
+        startResendCountdown("resend-btn", 60);
+        return;
+      }
+      showError("otp-error", (json && json.message) || "Failed to resend OTP");
+    });
+  </script>
+</body>
+</html>
+

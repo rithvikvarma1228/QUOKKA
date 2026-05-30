@@ -1,7 +1,37 @@
-torch
-transformers==4.40.2
-sentence-transformers
-faiss-cpu
-numpy
-pypdf
-accelerate
+# Web framework
+flask>=3.0.0
+flask-mail>=0.10.0
+flask-cors>=4.0.0
+
+# WSGI server (production)
+gunicorn>=21.2.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Security & auth (werkzeug used for password hashing + secure_filename)
+werkzeug>=3.0.0
+
+# HTTP client (used in model_router.py for Groq API calls)
+requests>=2.31.0
+
+# Embeddings model
+sentence-transformers>=2.7.0
+
+# Vector search
+faiss-cpu>=1.8.0
+
+# Numerical computing (used by document_store + faiss_store)
+numpy>=1.26.0
+
+# PDF parsing (pypdf used in document_store.py)
+pypdf>=4.0.0
+
+# Word document parsing (python-docx used in document_store.py)
+python-docx>=1.1.0
+
+# PDF generation (fpdf2 used in sessions.py for chat export)
+fpdf2>=2.7.0
+
+# Required by sentence-transformers for model loading
+accelerate>=0.27.0
