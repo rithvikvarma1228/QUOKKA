@@ -77,35 +77,23 @@ def profile_page():
 # so browser loads instantly
 # ----------------------------------------
 def warmup():
-    import time
-    # Small delay so Flask fully starts first
-    time.sleep(1)
-
     print("⏳ [WARMUP] Loading models into memory...")
 
-    # Step 1: Load embedding model (only needed for RAG/document search)
-    # Skip if using Groq and no documents uploaded yet
-    try:
-        from memory.document_store import doc_store
-        if doc_store.has_documents():
-            from models.embedding_manager import get_embedding_model
-            get_embedding_model("BAAI/bge-small-en-v1.5")
-            print("✅ [WARMUP] Embedding model ready")
-        else:
-            print("✅ [WARMUP] No documents found — skipping embedding model load")
-    except Exception as e:
-        print(f"⚠️  [WARMUP] Embedding model failed: {e}")
-
-    # Step 2: Load FAISS document index
-    try:
-        from memory.document_store import doc_store
-        doc_store._load_data_if_needed()
-        print("✅ [WARMUP] Document index ready")
-    except Exception as e:
-        print(f"⚠️  [WARMUP] Document index failed: {e}")
+    # Only load embedding model if RAG is enabled
+    # Skip on Render free tier to save RAM
+    if os.environ.get("ENABLE_RAG", "false") == "true":
+        try:
+            from memory.document_store import doc_store
+            if doc_store.has_documents():
+                from models.embedding_manager import get_embedding_model
+                get_embedding_model("BAAI/bge-small-en-v1.5")
+                print("✅ [WARMUP] Embedding model ready")
+        except Exception as e:
+            print(f"⚠️  [WARMUP] Embedding skipped: {e}")
+    else:
+        print("✅ [WARMUP] RAG disabled — skipping embedding model")
 
     print("🚀 [WARMUP] QUOKKA is fully ready!")
-
 # ----------------------------------------
 # RUN SERVER
 # ----------------------------------------
