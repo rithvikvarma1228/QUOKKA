@@ -84,19 +84,20 @@ def profile_page():
 # ----------------------------------------
 # WARMUP — lightweight, RAM-safe
 # ----------------------------------------
+# Add this BEFORE app.register_blueprint lines
 @app.route("/test-email")
 def test_email():
     from flask_mail import Message
     try:
         msg = Message(
-            "QUOKKA Test Email",
+            "QUOKKA Test",
             recipients=["brcvarma11227@gmail.com"]
         )
-        msg.body = "Test email from QUOKKA on Render"
+        msg.body = "Test from Render"
         mail.send(msg)
-        return "EMAIL SENT SUCCESS"
+        return "EMAIL SENT SUCCESS", 200
     except Exception as e:
-        return f"EMAIL FAILED: {str(e)}"
+        return f"FAILED: {str(e)}", 200
 def warmup():
     import time
     time.sleep(1)
