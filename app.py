@@ -1,5 +1,6 @@
 import os
 import threading
+import traceback
 from flask import Flask, render_template, redirect, session, jsonify
 from flask_mail import Mail
 from dotenv import load_dotenv
@@ -37,6 +38,31 @@ mail = Mail(app)
 @app.errorhandler(413)
 def file_too_large(e):
     return jsonify({"error": "File too large. Maximum size is 15MB."}), 413
+
+# ----------------------------------------
+# TEST EMAIL — shows exact error on screen
+# Visit /test-email to debug mail issues
+# Remove this route after email is confirmed
+# ----------------------------------------
+@app.route("/test-email")
+def test_email():
+    from flask_mail import Message
+    try:
+        print(f"[TEST] SERVER={app.config['MAIL_SERVER']}", flush=True)
+        print(f"[TEST] PORT={app.config['MAIL_PORT']}", flush=True)
+        print(f"[TEST] USERNAME={app.config['MAIL_USERNAME']}", flush=True)
+        print(f"[TEST] PASSWORD_LEN={len(app.config['MAIL_PASSWORD'] or '')}", flush=True)
+        msg = Message(
+            "QUOKKA Test Email",
+            recipients=["brcvarma11227@gmail.com"]
+        )
+        msg.body = "Test email from QUOKKA on Render. Email is working!"
+        mail.send(msg)
+        return "✅ EMAIL SENT — check your inbox!", 200
+    except Exception as e:
+        err = traceback.format_exc()
+        print(f"[TEST] FAILED: {err}", flush=True)
+        return f"❌ FAILED: {str(e)}\n\n{err}", 200
 
 # ----------------------------------------
 # REGISTER BLUEPRINTS
@@ -84,20 +110,6 @@ def profile_page():
 # ----------------------------------------
 # WARMUP — lightweight, RAM-safe
 # ----------------------------------------
-# Add this BEFORE app.register_blueprint lines
-@app.route("/test-email")
-def test_email():
-    from flask_mail import Message
-    try:
-        msg = Message(
-            "QUOKKA Test",
-            recipients=["brcvarma11227@gmail.com"]
-        )
-        msg.body = "Test from Render"
-        mail.send(msg)
-        return "EMAIL SENT SUCCESS", 200
-    except Exception as e:
-        return f"FAILED: {str(e)}", 200
 def warmup():
     import time
     time.sleep(1)
