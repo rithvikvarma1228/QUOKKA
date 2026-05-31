@@ -57,6 +57,7 @@ def _parse_iso(dt_str):
 @auth_bp.route("/api/auth/register", methods=["POST"])
 def register():
     try:
+        print("\n[REGISTER] Request received", flush=True)
         data = request.get_json() or {}
         name = (data.get("name") or "").strip()
         email = (data.get("email") or "").strip().lower()
@@ -79,7 +80,12 @@ def register():
 
         if existing and int(existing.get("is_verified") or 0) == 0:
             storage.set_user_otp(email, otp, expiry)
-            send_otp_email(email, existing.get("name") or name, otp)
+            try:
+                send_otp_email(email, existing.get("name") or name, otp)
+                print(f"[REGISTER] OTP resent to {email}", flush=True)
+            except Exception as mail_err:
+                print(f"[REGISTER] EMAIL ERROR: {str(mail_err)}", flush=True)
+                print(traceback.format_exc(), flush=True)
             return _json_ok(
                 message="Account exists but unverified. New OTP sent.",
                 data={"resend": True},
@@ -88,15 +94,19 @@ def register():
         password_hash = generate_password_hash(password)
         storage.create_user(name, email, password_hash)
         storage.set_user_otp(email, otp, expiry)
-        send_otp_email(email, name, otp)
+
+        try:
+            send_otp_email(email, name, otp)
+            print(f"[REGISTER] OTP sent to {email}", flush=True)
+        except Exception as mail_err:
+            print(f"[REGISTER] EMAIL ERROR: {str(mail_err)}", flush=True)
+            print(traceback.format_exc(), flush=True)
+
         return _json_ok(message="OTP sent to your email")
 
     except Exception as e:
         print("REGISTER ERROR:", traceback.format_exc(), flush=True)
-        return jsonify({
-            "success": False,
-            "message": str(e)
-        }), 500
+        return jsonify({"success": False, "message": str(e)}), 500
 
 
 @auth_bp.route("/api/auth/verify-otp", methods=["POST"])
@@ -138,7 +148,12 @@ def verify_otp():
         session["user_email"] = user["email"]
         session["user_name"] = user["name"]
 
-        send_welcome_email(user["email"], user["name"])
+        try:
+            send_welcome_email(user["email"], user["name"])
+            print(f"[VERIFY] Welcome email sent to {email}", flush=True)
+        except Exception as mail_err:
+            print(f"[VERIFY] Welcome email error: {str(mail_err)}", flush=True)
+
         return _json_ok(message="Account verified")
 
     except Exception as e:
@@ -161,7 +176,14 @@ def resend_otp():
         otp = str(secrets.randbelow(900000) + 100000)
         expiry = (datetime.now() + timedelta(minutes=10)).isoformat()
         storage.set_user_otp(email, otp, expiry)
-        send_otp_email(email, user.get("name") or "there", otp)
+
+        try:
+            send_otp_email(email, user.get("name") or "there", otp)
+            print(f"[RESEND] OTP sent to {email}", flush=True)
+        except Exception as mail_err:
+            print(f"[RESEND] EMAIL ERROR: {str(mail_err)}", flush=True)
+            print(traceback.format_exc(), flush=True)
+
         return _json_ok()
 
     except Exception as e:
@@ -212,17 +234,30 @@ def logout():
 @auth_bp.route("/api/auth/forgot-password", methods=["POST"])
 def forgot_password():
     try:
+        print("\n[FORGOT PASSWORD] Request received", flush=True)
         data = request.get_json() or {}
         email = (data.get("email") or "").strip().lower()
+        print(f"[FORGOT PASSWORD] Email: {email}", flush=True)
 
         user = storage.get_user_by_email(email) if _is_valid_email(email) else None
+        print(f"[FORGOT PASSWORD] User found: {user is not None}", flush=True)
+
         if user and int(user.get("is_verified") or 0) == 1:
             token = secrets.token_urlsafe(32)
             expiry = (datetime.now() + timedelta(minutes=15)).isoformat()
             storage.set_reset_token(email, token, expiry)
             base_url = os.environ.get("BASE_URL", "http://localhost:8000").rstrip("/")
             reset_link = f"{base_url}/reset-password?token={token}"
-            send_reset_email(user["email"], user["name"], reset_link)
+            print(f"[FORGOT PASSWORD] Reset link: {reset_link}", flush=True)
+
+            try:
+                send_reset_email(user["email"], user["name"], reset_link)
+                print(f"[FORGOT PASSWORD] Reset email sent successfully to {email}", flush=True)
+            except Exception as mail_err:
+                print(f"[FORGOT PASSWORD] EMAIL SEND ERROR: {str(mail_err)}", flush=True)
+                print(traceback.format_exc(), flush=True)
+        else:
+            print(f"[FORGOT PASSWORD] User not found or not verified for {email}", flush=True)
 
         return _json_ok(message="If that email exists, a reset link has been sent")
 
