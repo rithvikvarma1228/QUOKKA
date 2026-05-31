@@ -1,10 +1,11 @@
 import os
 import re
 import secrets
+import threading
 import traceback
 from datetime import datetime, timedelta
 
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, request, session, current_app
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import memory.chat_storage as storage
@@ -54,6 +55,25 @@ def _parse_iso(dt_str):
         return None
 
 
+# ----------------------------------------
+# ASYNC EMAIL SENDER
+# Runs email in background thread so the
+# SMTP connection never blocks the request
+# worker — fixes the SIGKILL/timeout issue
+# ----------------------------------------
+def send_email_async(app, fn, *args):
+    def run():
+        with app.app_context():
+            try:
+                fn(*args)
+                print(f"[EMAIL] Sent via {fn.__name__}", flush=True)
+            except Exception as e:
+                print(f"[EMAIL ERROR] {fn.__name__}: {str(e)}", flush=True)
+                print(traceback.format_exc(), flush=True)
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+
+
 @auth_bp.route("/api/auth/register", methods=["POST"])
 def register():
     try:
@@ -80,12 +100,12 @@ def register():
 
         if existing and int(existing.get("is_verified") or 0) == 0:
             storage.set_user_otp(email, otp, expiry)
-            try:
-                send_otp_email(email, existing.get("name") or name, otp)
-                print(f"[REGISTER] OTP resent to {email}", flush=True)
-            except Exception as mail_err:
-                print(f"[REGISTER] EMAIL ERROR: {str(mail_err)}", flush=True)
-                print(traceback.format_exc(), flush=True)
+            send_email_async(
+                current_app._get_current_object(),
+                send_otp_email,
+                email, existing.get("name") or name, otp
+            )
+            print(f"[REGISTER] Resend OTP queued for {email}", flush=True)
             return _json_ok(
                 message="Account exists but unverified. New OTP sent.",
                 data={"resend": True},
@@ -95,13 +115,12 @@ def register():
         storage.create_user(name, email, password_hash)
         storage.set_user_otp(email, otp, expiry)
 
-        try:
-            send_otp_email(email, name, otp)
-            print(f"[REGISTER] OTP sent to {email}", flush=True)
-        except Exception as mail_err:
-            print(f"[REGISTER] EMAIL ERROR: {str(mail_err)}", flush=True)
-            print(traceback.format_exc(), flush=True)
-
+        send_email_async(
+            current_app._get_current_object(),
+            send_otp_email,
+            email, name, otp
+        )
+        print(f"[REGISTER] OTP email queued for {email}", flush=True)
         return _json_ok(message="OTP sent to your email")
 
     except Exception as e:
@@ -148,12 +167,11 @@ def verify_otp():
         session["user_email"] = user["email"]
         session["user_name"] = user["name"]
 
-        try:
-            send_welcome_email(user["email"], user["name"])
-            print(f"[VERIFY] Welcome email sent to {email}", flush=True)
-        except Exception as mail_err:
-            print(f"[VERIFY] Welcome email error: {str(mail_err)}", flush=True)
-
+        send_email_async(
+            current_app._get_current_object(),
+            send_welcome_email,
+            user["email"], user["name"]
+        )
         return _json_ok(message="Account verified")
 
     except Exception as e:
@@ -177,13 +195,12 @@ def resend_otp():
         expiry = (datetime.now() + timedelta(minutes=10)).isoformat()
         storage.set_user_otp(email, otp, expiry)
 
-        try:
-            send_otp_email(email, user.get("name") or "there", otp)
-            print(f"[RESEND] OTP sent to {email}", flush=True)
-        except Exception as mail_err:
-            print(f"[RESEND] EMAIL ERROR: {str(mail_err)}", flush=True)
-            print(traceback.format_exc(), flush=True)
-
+        send_email_async(
+            current_app._get_current_object(),
+            send_otp_email,
+            email, user.get("name") or "there", otp
+        )
+        print(f"[RESEND] OTP queued for {email}", flush=True)
         return _json_ok()
 
     except Exception as e:
@@ -248,16 +265,15 @@ def forgot_password():
             storage.set_reset_token(email, token, expiry)
             base_url = os.environ.get("BASE_URL", "http://localhost:8000").rstrip("/")
             reset_link = f"{base_url}/reset-password?token={token}"
-            print(f"[FORGOT PASSWORD] Reset link: {reset_link}", flush=True)
+            print(f"[FORGOT PASSWORD] Reset link generated, queuing email", flush=True)
 
-            try:
-                send_reset_email(user["email"], user["name"], reset_link)
-                print(f"[FORGOT PASSWORD] Reset email sent successfully to {email}", flush=True)
-            except Exception as mail_err:
-                print(f"[FORGOT PASSWORD] EMAIL SEND ERROR: {str(mail_err)}", flush=True)
-                print(traceback.format_exc(), flush=True)
+            send_email_async(
+                current_app._get_current_object(),
+                send_reset_email,
+                user["email"], user["name"], reset_link
+            )
         else:
-            print(f"[FORGOT PASSWORD] User not found or not verified for {email}", flush=True)
+            print(f"[FORGOT PASSWORD] User not found or not verified", flush=True)
 
         return _json_ok(message="If that email exists, a reset link has been sent")
 
