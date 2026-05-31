@@ -84,6 +84,19 @@ def profile_page():
 # ----------------------------------------
 # WARMUP — lightweight, RAM-safe
 # ----------------------------------------
+@app.route("/test-email")
+def test_email():
+    from flask_mail import Message
+    try:
+        msg = Message(
+            "QUOKKA Test Email",
+            recipients=["brcvarma11227@gmail.com"]
+        )
+        msg.body = "Test email from QUOKKA on Render"
+        mail.send(msg)
+        return "EMAIL SENT SUCCESS"
+    except Exception as e:
+        return f"EMAIL FAILED: {str(e)}"
 def warmup():
     import time
     time.sleep(1)
