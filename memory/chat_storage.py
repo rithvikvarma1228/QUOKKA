@@ -336,6 +336,18 @@ def clear_reset_token(email):
     conn.close()
 
 
+def delete_unverified_user(email):
+    """Remove an unverified account (e.g. after too many OTP failures)."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute(
+        "DELETE FROM users WHERE email = ? AND is_verified = 0",
+        (email.lower().strip(),),
+    )
+    conn.commit()
+    conn.close()
+
+
 def update_user_name(user_id, name):
     conn = get_connection()
     c = conn.cursor()

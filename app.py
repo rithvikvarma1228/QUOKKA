@@ -2,7 +2,6 @@ import os
 import threading
 import traceback
 from flask import Flask, render_template, redirect, session, jsonify
-from flask_mail import Mail
 from dotenv import load_dotenv
 from routes.chat import chat_bp
 from routes.sessions import sessions_bp
@@ -13,69 +12,41 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# ----------------------------------------
-# APP CONFIG
-# ----------------------------------------
-app.secret_key = os.environ.get("SECRET_KEY", "quokka-dev-secret")
+# ── App config ────────────────────────────────────────────────────────────────
+app.secret_key = os.environ.get("SECRET_KEY", "quokka-dev-secret-change-me")
 
-# File upload limit — 15MB
+# File upload limit — 15 MB
 app.config["MAX_CONTENT_LENGTH"] = 15 * 1024 * 1024
 
-# Flask-Mail config
-app.config["MAIL_SERVER"]         = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
-app.config["MAIL_PORT"]           = int(os.environ.get("MAIL_PORT", 587))
-app.config["MAIL_USE_TLS"]        = True
-app.config["MAIL_USE_SSL"]        = False
-app.config["MAIL_USERNAME"]       = os.environ.get("MAIL_USERNAME")
-app.config["MAIL_PASSWORD"]       = os.environ.get("MAIL_PASSWORD")
-app.config["MAIL_DEFAULT_SENDER"] = ("QUOKKA AI", os.environ.get("MAIL_USERNAME"))
-
-mail = Mail(app)
-
-# ----------------------------------------
-# ERROR HANDLERS
-# ----------------------------------------
+# ── Error handlers ────────────────────────────────────────────────────────────
 @app.errorhandler(413)
 def file_too_large(e):
-    return jsonify({"error": "File too large. Maximum size is 15MB."}), 413
+    return jsonify({"error": "File too large. Maximum size is 15 MB."}), 413
 
-# ----------------------------------------
-# TEST EMAIL — shows exact error on screen
-# Visit /test-email to debug mail issues
-# Remove this route after email is confirmed
-# ----------------------------------------
+# ── Email test route ──────────────────────────────────────────────────────────
+# Visit /test-email to verify Brevo API is wired up correctly.
 @app.route("/test-email")
 def test_email():
-    from flask_mail import Message
     try:
-        print(f"[TEST] SERVER={app.config['MAIL_SERVER']}", flush=True)
-        print(f"[TEST] PORT={app.config['MAIL_PORT']}", flush=True)
-        print(f"[TEST] USERNAME={app.config['MAIL_USERNAME']}", flush=True)
-        print(f"[TEST] PASSWORD_LEN={len(app.config['MAIL_PASSWORD'] or '')}", flush=True)
-        msg = Message(
-            subject="QUOKKA Test Email",
-            sender=("QUOKKA AI", app.config["MAIL_USERNAME"]),
-            recipients=[app.config["MAIL_USERNAME"]],  # send to self
-        )
-        msg.body = "Test email from QUOKKA. Flask-Mail + Gmail SMTP is working!"
-        mail.send(msg)
-        return "✅ EMAIL SENT via Flask-Mail — check your inbox!", 200
+        from services.mail_service import _send
+        to = os.environ.get("MAIL_FROM", "")
+        if not to:
+            return "❌ MAIL_FROM env var is not set. Add it in Render.", 200
+        _send(to, "QUOKKA Admin", "QUOKKA Test Email",
+              "<p style='font-family:sans-serif;color:#333'>Test email from QUOKKA — Brevo API is working!</p>")
+        return f"✅ Test email sent to {to} via Brevo HTTP API — check your inbox!", 200
     except Exception as e:
         err = traceback.format_exc()
-        print(f"[TEST] FAILED: {err}", flush=True)
+        print(f"[TEST EMAIL FAILED]\n{err}", flush=True)
         return f"❌ FAILED: {str(e)}\n\n{err}", 200
 
-# ----------------------------------------
-# REGISTER BLUEPRINTS
-# ----------------------------------------
+# ── Blueprints ────────────────────────────────────────────────────────────────
 app.register_blueprint(chat_bp)
 app.register_blueprint(sessions_bp)
 app.register_blueprint(upload_bp)
 app.register_blueprint(auth_bp)
 
-# ----------------------------------------
-# PAGE ROUTES
-# ----------------------------------------
+# ── Page routes ───────────────────────────────────────────────────────────────
 @app.route("/")
 def serve_index():
     if "user_id" not in session:
@@ -108,13 +79,11 @@ def profile_page():
         return redirect("/login")
     return render_template("profile.html")
 
-# ----------------------------------------
-# WARMUP — lightweight, RAM-safe
-# ----------------------------------------
+# ── Warmup ────────────────────────────────────────────────────────────────────
 def warmup():
     import time
     time.sleep(1)
-    print("⏳ [WARMUP] Starting...")
+    print("⏳ [WARMUP] Starting...", flush=True)
 
     enable_rag = os.environ.get("ENABLE_RAG", "false").lower() == "true"
 
@@ -125,30 +94,21 @@ def warmup():
             if doc_store.has_documents():
                 from models.embedding_manager import get_embedding_model
                 get_embedding_model("all-MiniLM-L6-v2")
-                print("✅ [WARMUP] Embedding model + FAISS ready")
+                print("✅ [WARMUP] Embedding model + FAISS ready", flush=True)
             else:
-                print("✅ [WARMUP] No documents — skipping embedding load")
+                print("✅ [WARMUP] No documents — skipping embedding load", flush=True)
         except Exception as e:
-            print(f"⚠️  [WARMUP] RAG warmup failed: {e}")
+            print(f"⚠️  [WARMUP] RAG warmup failed: {e}", flush=True)
     else:
-        print("✅ [WARMUP] RAG disabled — skipping embedding model (saves RAM)")
+        print("✅ [WARMUP] RAG disabled — skipping embedding model (saves RAM)", flush=True)
 
-    print("🚀 [WARMUP] QUOKKA is ready!")
+    print("🚀 [WARMUP] QUOKKA is ready!", flush=True)
 
-# ----------------------------------------
-# RUN SERVER
-# ----------------------------------------
+# ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
 
-    t = threading.Thread(target=warmup, daemon=True)
-    t.start()
+    threading.Thread(target=warmup, daemon=True).start()
+    print(f"🌐 Starting QUOKKA on http://localhost:{port}", flush=True)
 
-    print(f"🌐 Starting QUOKKA on http://localhost:{port}")
-
-    app.run(
-        host="0.0.0.0",
-        port=port,
-        debug=False,
-        use_reloader=False
-    )
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
