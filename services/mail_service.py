@@ -1,17 +1,13 @@
 import os
-import requests
+from flask import current_app
+from flask_mail import Message
 
 
-BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 SENDER_NAME = "QUOKKA AI"
 
 
 def _get_sender_email():
-    return os.environ.get("MAIL_USERNAME", "brcvarma11227@gmail.com")
-
-
-def _get_api_key():
-    return os.environ.get("BREVO_API_KEY", "")
+    return os.environ.get("MAIL_USERNAME", "")
 
 
 def _base_wrapper(body_content):
@@ -42,43 +38,28 @@ def _base_wrapper(body_content):
 </html>"""
 
 
-def _send_via_api(to_email, to_name, subject, html_body):
+def _send_via_flask_mail(to_email, to_name, subject, html_body):
     """
-    Send email via Brevo HTTP API (port 443).
-    This works on Render free tier where SMTP port 587 is blocked.
+    Send email via Flask-Mail (Gmail SMTP, port 587 + TLS).
+    Uses the MAIL_USERNAME / MAIL_PASSWORD already configured in app.py.
+    Must be called inside an active Flask application context.
     """
-    api_key = _get_api_key()
+    from flask_mail import Mail
+    mail = current_app.extensions.get("mail")
+    if mail is None:
+        raise RuntimeError("Flask-Mail extension not found on current app")
+
     sender_email = _get_sender_email()
-
-    if not api_key:
-        raise RuntimeError("BREVO_API_KEY environment variable is not set")
-
-    payload = {
-        "sender": {"name": SENDER_NAME, "email": sender_email},
-        "to": [{"email": to_email, "name": to_name}],
-        "subject": subject,
-        "htmlContent": html_body
-    }
-
-    print(f"[MAIL] Sending '{subject}' to {to_email} via Brevo API", flush=True)
-
-    response = requests.post(
-        BREVO_API_URL,
-        headers={
-            "api-key": api_key,
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        },
-        json=payload,
-        timeout=15
+    msg = Message(
+        subject=subject,
+        sender=(SENDER_NAME, sender_email),
+        recipients=[to_email],
     )
+    msg.html = html_body
 
-    print(f"[MAIL] Brevo API response: {response.status_code} — {response.text}", flush=True)
-
-    if response.status_code not in (200, 201):
-        raise RuntimeError(f"Brevo API error {response.status_code}: {response.text}")
-
-    return response
+    print(f"[MAIL] Sending '{subject}' to {to_email} via Flask-Mail (SMTP)", flush=True)
+    mail.send(msg)
+    print(f"[MAIL] Successfully sent '{subject}' to {to_email}", flush=True)
 
 
 def send_otp_email(email, name, otp):
@@ -95,7 +76,7 @@ def send_otp_email(email, name, otp):
         <p style="color:#71717a;font-size:13px;margin:0;">If you didn't request this, ignore this email.</p>
     """
     html = _base_wrapper(body)
-    _send_via_api(email, name, "Verify your QUOKKA account", html)
+    _send_via_flask_mail(email, name, "Verify your QUOKKA account", html)
 
 
 def send_reset_email(email, name, reset_link):
@@ -116,7 +97,7 @@ def send_reset_email(email, name, reset_link):
         <p style="color:#71717a;font-size:13px;margin:0;">If you didn't request this, ignore this email.</p>
     """
     html = _base_wrapper(body)
-    _send_via_api(email, name, "Reset your QUOKKA password", html)
+    _send_via_flask_mail(email, name, "Reset your QUOKKA password", html)
 
 
 def send_welcome_email(email, name):
@@ -130,4 +111,4 @@ def send_welcome_email(email, name):
         </p>
     """
     html = _base_wrapper(body)
-    _send_via_api(email, name, "Welcome to QUOKKA", html)
+    _send_via_flask_mail(email, name, "Welcome to QUOKKA", html)

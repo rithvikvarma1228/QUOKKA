@@ -12,8 +12,6 @@ GROQ_MODEL_MAP = {
 
 DEFAULT_MODEL = "llama-3.1-8b-instant"
 
-DEFAULT_MODEL = "llama-3.1-8b-instant"
-
 
 def ask_llm_stream(prompt, model="llama3.1:8b", temperature=0.7, provider=None):
     groq_model = GROQ_MODEL_MAP.get(model, DEFAULT_MODEL)

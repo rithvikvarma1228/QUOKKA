@@ -150,15 +150,15 @@ def verify_otp():
             conn.close()
             return _json_error("Too many attempts. Please register again.", 400)
 
-        storage.increment_otp_attempts(email)
-
-        user = storage.get_user_by_email(email)
+        # Check expiry BEFORE incrementing attempts
         expiry_str = user.get("otp_expiry")
         exp_dt = _parse_iso(expiry_str) if expiry_str else None
         if not exp_dt or exp_dt < datetime.now():
             return _json_error("OTP expired. Please register again.", 400)
 
+        # Check OTP BEFORE incrementing attempts so a correct final attempt succeeds
         if (user.get("otp") or "") != otp:
+            storage.increment_otp_attempts(email)
             return _json_error("Invalid OTP", 400)
 
         storage.verify_user_email(email)

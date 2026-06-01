@@ -16,6 +16,24 @@ async function postJson(url, data) {
   }
 }
 
+async function putJson(url, data) {
+  try {
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data || {}),
+    });
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, json };
+  } catch (e) {
+    return {
+      ok: false,
+      status: 0,
+      json: { success: false, message: "Network error. Please try again." },
+    };
+  }
+}
+
 function togglePasswordVisibility(inputId, iconId) {
   const input = document.getElementById(inputId);
   const icon = document.getElementById(iconId);

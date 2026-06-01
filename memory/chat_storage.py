@@ -94,12 +94,12 @@ def init_storage():
             
     conn.close()
 
-def create_chat(title="New Chat", is_private=False):
+def create_chat(title="New Chat", is_private=False, user_id=None):
     chat_id = str(uuid.uuid4())
     conn = get_connection()
     c = conn.cursor()
-    c.execute('INSERT INTO chats (chat_id, title, is_private, created_at, is_pinned) VALUES (?, ?, ?, ?, ?)',
-              (chat_id, title, 1 if is_private else 0, datetime.now().isoformat(), 0))
+    c.execute('INSERT INTO chats (chat_id, title, is_private, created_at, is_pinned, user_id) VALUES (?, ?, ?, ?, ?, ?)',
+              (chat_id, title, 1 if is_private else 0, datetime.now().isoformat(), 0, user_id))
     conn.commit()
     conn.close()
     return chat_id

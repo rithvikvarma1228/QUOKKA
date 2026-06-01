@@ -2,6 +2,7 @@ import os
 from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
 from memory.document_store import doc_store
+from routes.auth_middleware import login_required
 
 upload_bp = Blueprint("upload", __name__)
 
@@ -13,6 +14,7 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @upload_bp.route("/api/upload", methods=["POST"])
+@login_required
 def upload_file():
     if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400

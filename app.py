@@ -53,12 +53,13 @@ def test_email():
         print(f"[TEST] USERNAME={app.config['MAIL_USERNAME']}", flush=True)
         print(f"[TEST] PASSWORD_LEN={len(app.config['MAIL_PASSWORD'] or '')}", flush=True)
         msg = Message(
-            "QUOKKA Test Email",
-            recipients=["brcvarma11227@gmail.com"]
+            subject="QUOKKA Test Email",
+            sender=("QUOKKA AI", app.config["MAIL_USERNAME"]),
+            recipients=[app.config["MAIL_USERNAME"]],  # send to self
         )
-        msg.body = "Test email from QUOKKA on Render. Email is working!"
+        msg.body = "Test email from QUOKKA. Flask-Mail + Gmail SMTP is working!"
         mail.send(msg)
-        return "✅ EMAIL SENT — check your inbox!", 200
+        return "✅ EMAIL SENT via Flask-Mail — check your inbox!", 200
     except Exception as e:
         err = traceback.format_exc()
         print(f"[TEST] FAILED: {err}", flush=True)

@@ -475,7 +475,7 @@
             hideMsg("profile-success");
             hideMsg("profile-error");
             const name = document.getElementById("edit-name").value.trim();
-            const { ok, json } = await postJson("/api/auth/profile", { name });
+            const { ok, json } = await putJson("/api/auth/profile", { name });
             if (ok && json.success) {
                 showMsg("profile-success", "Profile updated");
                 document.getElementById("profile-name").textContent = name;
@@ -497,7 +497,7 @@
                 showMsg("password-error", "Passwords do not match.");
                 return;
             }
-            const { ok, json } = await postJson("/api/auth/change-password", { current_password, new_password });
+            const { ok, json } = await putJson("/api/auth/change-password", { current_password, new_password });
             if (ok && json.success) {
                 showMsg("password-success", "Password updated");
                 document.getElementById("password-form").reset();

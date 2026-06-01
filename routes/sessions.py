@@ -4,28 +4,33 @@ try:
 except ImportError:
     FPDF = None
 
-from flask import Blueprint, jsonify, request, send_file
+from flask import Blueprint, jsonify, request, send_file, session
 import memory.chat_storage as storage
 from memory.faiss_store import delete_session as delete_faiss_session
+from routes.auth_middleware import login_required
 
 sessions_bp = Blueprint("sessions", __name__)
 
 @sessions_bp.route("/api/chats", methods=["GET"])
+@login_required
 def get_normal_chats():
     # Only return normal chats
     chats = storage.get_all_chats(include_private=False)
     return jsonify({"chats": chats})
 
 @sessions_bp.route("/api/chat/new", methods=["POST"])
+@login_required
 def create_chat():
     data = request.get_json() or {}
     title = data.get("title", "New Chat")
-    
+    user_id = session.get("user_id")
+
     # Private chats are now strictly memory-less, so we only create normal chats
-    chat_id = storage.create_chat(title, is_private=False)
+    chat_id = storage.create_chat(title, is_private=False, user_id=user_id)
     return jsonify({"chat_id": chat_id, "title": title})
 
 @sessions_bp.route("/api/chat/<chat_id>", methods=["GET"])
+@login_required
 def get_chat(chat_id):
     chat = storage.get_chat(chat_id)
     if not chat:
@@ -33,6 +38,7 @@ def get_chat(chat_id):
     return jsonify({"chat": chat})
 
 @sessions_bp.route("/api/chat/<chat_id>", methods=["PUT"])
+@login_required
 def rename_chat(chat_id):
     data = request.get_json()
     new_title = data.get("title")
@@ -42,6 +48,7 @@ def rename_chat(chat_id):
     return jsonify({"error": "Title is required"}), 400
 
 @sessions_bp.route("/api/chat/<chat_id>", methods=["DELETE"])
+@login_required
 def delete_chat(chat_id):
     chat = storage.get_chat(chat_id)
     if not chat:
@@ -55,21 +62,25 @@ def delete_chat(chat_id):
     return jsonify({"success": True})
 
 @sessions_bp.route("/api/chat/<chat_id>/pin", methods=["PUT"])
+@login_required
 def toggle_pin(chat_id):
     is_pinned = storage.toggle_pin_chat(chat_id)
     return jsonify({"success": True, "is_pinned": is_pinned})
 
 @sessions_bp.route("/api/chats/search", methods=["GET"])
+@login_required
 def search_chats():
     q = request.args.get("q", "")
     if not q:
         return jsonify({"results": []})
-    results = storage.search_chats(q, include_private=False)
+    # Bug fix: use a set for O(1) lookup instead of filtering all chats
+    matched_ids = set(storage.search_chats(q, include_private=False))
     all_chats = storage.get_all_chats(include_private=False)
-    matched = [c for c in all_chats if c["chat_id"] in results]
+    matched = [c for c in all_chats if c["chat_id"] in matched_ids]
     return jsonify({"results": matched})
 
 @sessions_bp.route("/api/chat/<chat_id>/export", methods=["GET"])
+@login_required
 def export_chat(chat_id):
     fmt = request.args.get("format", "txt")
     chat = storage.get_chat(chat_id)
