@@ -104,13 +104,13 @@ def create_chat(title="New Chat", is_private=False, user_id=None):
     conn.close()
     return chat_id
 
-def get_all_chats(include_private=False):
+def get_all_chats(user_id, include_private=False):
     conn = get_connection()
     c = conn.cursor()
     if include_private:
-        c.execute('SELECT * FROM chats ORDER BY is_pinned DESC, created_at DESC')
+        c.execute('SELECT * FROM chats WHERE user_id = ? ORDER BY is_pinned DESC, created_at DESC', (user_id,))
     else:
-        c.execute('SELECT * FROM chats WHERE is_private = 0 ORDER BY is_pinned DESC, created_at DESC')
+        c.execute('SELECT * FROM chats WHERE is_private = 0 AND user_id = ? ORDER BY is_pinned DESC, created_at DESC', (user_id,))
     
     rows = c.fetchall()
     conn.close()
@@ -180,7 +180,7 @@ def toggle_pin_chat(chat_id):
     conn.close()
     return bool(new_status)
 
-def search_chats(query, include_private=False):
+def search_chats(query, user_id, include_private=False):
     conn = get_connection()
     c = conn.cursor()
     q = f"%{query}%"
@@ -190,15 +190,15 @@ def search_chats(query, include_private=False):
             SELECT DISTINCT c.chat_id 
             FROM chats c 
             LEFT JOIN messages m ON c.chat_id = m.chat_id 
-            WHERE c.title LIKE ? OR m.content LIKE ?
-        ''', (q, q))
+            WHERE c.user_id = ? AND (c.title LIKE ? OR m.content LIKE ?)
+        ''', (user_id, q, q))
     else:
         c.execute('''
             SELECT DISTINCT c.chat_id 
             FROM chats c 
             LEFT JOIN messages m ON c.chat_id = m.chat_id 
-            WHERE c.is_private = 0 AND (c.title LIKE ? OR m.content LIKE ?)
-        ''', (q, q))
+            WHERE c.is_private = 0 AND c.user_id = ? AND (c.title LIKE ? OR m.content LIKE ?)
+        ''', (user_id, q, q))
         
     rows = c.fetchall()
     conn.close()

@@ -14,8 +14,8 @@ sessions_bp = Blueprint("sessions", __name__)
 @sessions_bp.route("/api/chats", methods=["GET"])
 @login_required
 def get_normal_chats():
-    # Only return normal chats
-    chats = storage.get_all_chats(include_private=False)
+    user_id = session.get("user_id")
+    chats = storage.get_all_chats(user_id=user_id, include_private=False)
     return jsonify({"chats": chats})
 
 @sessions_bp.route("/api/chat/new", methods=["POST"])
@@ -35,11 +35,18 @@ def get_chat(chat_id):
     chat = storage.get_chat(chat_id)
     if not chat:
         return jsonify({"error": "Chat not found"}), 404
+    if chat.get("user_id") != session.get("user_id"):
+        return jsonify({"error": "Unauthorized"}), 403
     return jsonify({"chat": chat})
 
 @sessions_bp.route("/api/chat/<chat_id>", methods=["PUT"])
 @login_required
 def rename_chat(chat_id):
+    chat = storage.get_chat(chat_id)
+    if not chat:
+        return jsonify({"error": "Chat not found"}), 404
+    if chat.get("user_id") != session.get("user_id"):
+        return jsonify({"error": "Unauthorized"}), 403
     data = request.get_json()
     new_title = data.get("title")
     if new_title:
@@ -53,7 +60,8 @@ def delete_chat(chat_id):
     chat = storage.get_chat(chat_id)
     if not chat:
         return jsonify({"error": "Chat not found"}), 404
-            
+    if chat.get("user_id") != session.get("user_id"):
+        return jsonify({"error": "Unauthorized"}), 403
     storage.delete_chat(chat_id)
     try:
         delete_faiss_session(chat_id)
@@ -64,6 +72,11 @@ def delete_chat(chat_id):
 @sessions_bp.route("/api/chat/<chat_id>/pin", methods=["PUT"])
 @login_required
 def toggle_pin(chat_id):
+    chat = storage.get_chat(chat_id)
+    if not chat:
+        return jsonify({"error": "Chat not found"}), 404
+    if chat.get("user_id") != session.get("user_id"):
+        return jsonify({"error": "Unauthorized"}), 403
     is_pinned = storage.toggle_pin_chat(chat_id)
     return jsonify({"success": True, "is_pinned": is_pinned})
 
@@ -73,9 +86,9 @@ def search_chats():
     q = request.args.get("q", "")
     if not q:
         return jsonify({"results": []})
-    # Bug fix: use a set for O(1) lookup instead of filtering all chats
-    matched_ids = set(storage.search_chats(q, include_private=False))
-    all_chats = storage.get_all_chats(include_private=False)
+    user_id = session.get("user_id")
+    matched_ids = set(storage.search_chats(q, user_id=user_id, include_private=False))
+    all_chats = storage.get_all_chats(user_id=user_id, include_private=False)
     matched = [c for c in all_chats if c["chat_id"] in matched_ids]
     return jsonify({"results": matched})
 
@@ -86,6 +99,8 @@ def export_chat(chat_id):
     chat = storage.get_chat(chat_id)
     if not chat:
         return jsonify({"error": "Chat not found"}), 404
+    if chat.get("user_id") != session.get("user_id"):
+        return jsonify({"error": "Unauthorized"}), 403
         
     title = chat.get("title", "Exported_Chat")
     messages = chat.get("messages", [])

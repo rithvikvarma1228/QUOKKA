@@ -1,15 +1,15 @@
-# QUOKKA AI Assistant — Complete Project Documentation Report
+# QUOKKA — Complete Project Documentation Report
 
-> **Version:** 1.0 | **Prepared after reading every file in the project.**  
-> This document is written so that a teammate, a first-time reviewer, or a non-technical reader
-> can understand every part of this codebase from scratch.
+> **Generated:** June 2026  
+> **Purpose:** Full technical reference for teammates, reviewers, and non-technical readers.  
+> **Coverage:** Every file, every technology, every API endpoint, every security measure.
 
 ---
 
 ## Table of Contents
 
 1. [Project Overview](#1-project-overview)
-2. [How the App Works — Simple Explanation](#2-how-the-app-works--simple-explanation)
+2. [How The App Works — Simple Explanation](#2-how-the-app-works--simple-explanation)
 3. [Complete Folder Structure](#3-complete-folder-structure)
 4. [Technology Stack — Deep Explanation](#4-technology-stack--deep-explanation)
 5. [All Dependencies Explained](#5-all-dependencies-explained)
@@ -31,115 +31,136 @@
 
 ### What is QUOKKA?
 
-QUOKKA is a **self-hosted AI chat assistant** — a web application where users can log in, have conversations with powerful AI language models, upload documents, and get AI answers grounded in their own files.
+QUOKKA is a **self-hosted AI chat assistant** — a web application you run on a server that lets users have conversations with powerful AI language models directly in their browser. Think of it as your own private version of ChatGPT, but with extra capabilities like document search, private mode, and full control over where your data lives.
 
-Think of it like a private version of ChatGPT that you run yourself, where you control the data, the models, and the experience.
+The name "QUOKKA" is styled entirely in uppercase, referencing the small, cheerful marsupial — reflecting the project's friendly, approachable design aesthetic.
 
 ### What problem does it solve?
 
-Most AI chat tools are either:
-- **Closed and expensive** (ChatGPT, Claude) — you pay per message and your data goes to a third-party server.
-- **Technically complex to self-host** — open-source models require expensive GPUs.
+Most AI chat tools (ChatGPT, Claude, Gemini) have three major limitations:
+1. **Privacy** — your conversations are stored on someone else's servers.
+2. **Document grounding** — they can't answer questions specifically about *your* private documents unless you pay for premium features.
+3. **Cost** — per-token billing at scale becomes expensive quickly.
 
-QUOKKA solves this by using **Groq's free API** to run large language models at zero cost and near-zero latency, while keeping everything else (user accounts, chat history, document search) under your own control on your own server.
+QUOKKA solves all three by giving you a self-hosted assistant where:
+- You control the database — your chats stay on your server.
+- You can upload PDFs, DOCX files, and text files, and the AI will search them for relevant answers.
+- You use the **Groq API**, which is currently free and extremely fast.
 
 ### Who is it built for?
 
-- Developers who want a customizable AI assistant
-- Students and researchers who want to chat with their own documents (papers, notes, textbooks)
-- Small teams who want a shared internal AI tool
-- Anyone who values privacy and wants full control over their AI conversations
+- **Developers** who want a fast, extensible, self-hostable AI assistant.
+- **Students and researchers** who want to chat with their documents (research papers, textbooks).
+- **Small teams** who need a shared internal AI assistant with user accounts.
+- **Privacy-conscious users** who do not want their chat history stored on third-party servers.
 
 ### What can a user do with it?
 
-1. **Register** with their email and verify their identity via a 6-digit OTP code
-2. **Chat** with AI models in real-time, watching the response appear word by word
-3. **Upload documents** (PDF, Word, TXT) and ask questions about them
-4. **Switch AI models** — choose between speed-optimized or quality-optimized models
-5. **Organize conversations** — search, pin, rename, and delete chats
-6. **Export conversations** as downloadable TXT or PDF files
-7. **Use private mode** — chat without anything being saved to the server
-8. **Manage their account** — update name, change password, delete account
+- **Register** with email, verify with a 6-digit OTP code, then log in.
+- **Chat** with AI using multiple models (fast or smart, their choice).
+- **Upload documents** (PDF, DOCX, TXT) and ask questions about them — the AI will cite sources and show a confidence percentage.
+- **Enable Private Mode** — chat without anything being saved to the server.
+- **Export conversations** as plain text (`.txt`) or formatted PDF.
+- **Pin important chats**, rename them, search through all chats.
+- **Manage their profile** — change display name, change password, or delete their account.
+- **Recover a forgotten password** via a secure email link.
 
 ### What makes it different from a regular chatbot?
 
 | Feature | Regular Chatbot | QUOKKA |
-|---------|----------------|--------|
-| Document Q&A | ❌ | ✅ RAG with FAISS vector search |
-| Streaming responses | Sometimes | ✅ Always — token by token |
-| Email auth with OTP | ❌ | ✅ Full OTP verification |
-| Private mode | ❌ | ✅ Zero server storage |
-| Export to PDF | ❌ | ✅ |
-| Self-hostable | ❌ | ✅ |
-| Multiple models | Sometimes | ✅ 4 models available |
+|---|---|---|
+| Self-hosted | ❌ | ✅ |
+| Document RAG | Limited | ✅ Full PDF/DOCX/TXT |
+| Private mode (zero server storage) | ❌ | ✅ |
+| Email verification | ❌ | ✅ OTP-based |
+| Export chat as PDF | ❌ | ✅ |
+| Open source / free | Limited | ✅ MIT License |
+| Streaming word-by-word | Varies | ✅ SSE streaming |
+| Source citation with confidence % | ❌ | ✅ |
 
 ---
 
-## 2. How the App Works — Simple Explanation
+## 2. How The App Works — Simple Explanation
 
-### The Main User Journey
+### The Complete User Journey
 
 **Step 1: User opens the browser**  
-The user navigates to the app URL (e.g., `http://localhost:8000`). Flask's `app.py` checks whether the user is logged in. If not, it redirects them to `/login`.
+They navigate to the QUOKKA URL (e.g., `http://localhost:8000`). The server detects they have no active session and redirects them to `/login`.
 
 **Step 2: User signs up with email**  
-The user fills in their name, email, and password on the `/signup` page. The frontend (`signup.html`) sends a `POST` request to `/api/auth/register`. The server validates the input, hashes the password, creates a database record, and generates a random 6-digit number (the OTP).
+They click "Don't have an account? Sign up" and fill in:
+- Full name (minimum 2 characters)
+- Email address (validated by the server)
+- Password (minimum 8 characters, must contain at least one number)
 
 **Step 3: User gets OTP on email**  
-The server calls `mail_service.py`, which uses Flask-Mail to send a beautifully formatted HTML email containing the 6-digit code. The email is sent via Gmail's SMTP server. The OTP is stored in the database and expires in 10 minutes.
+The server creates their account in the database (marked as *unverified*), generates a random 6-digit number (e.g., `482931`), stores it with a 10-minute expiry, and sends it to their email via the Brevo email API. The user sees a panel with 6 individual boxes to type the code.
 
 **Step 4: User verifies and logs in**  
-The user enters the 6-digit code into the OTP input boxes on the page. The frontend sends the code to `/api/auth/verify-otp`. The server checks if the code matches and hasn't expired. If correct, it marks the account as verified, creates a Flask session (a server-side cookie that proves the user is logged in), and redirects them to the main chat page. A welcome email is sent automatically.
+The user types the 6-digit code. The server checks:
+- Is it the right code? (max 5 attempts before account is wiped)
+- Has it expired? (10-minute window)
+
+If valid, the account is marked **verified**, the session is created (the user is now "logged in"), and a welcome email is sent.
 
 **Step 5: User types a question**  
-On the main chat page (`index.html`), the user types a message in the text area at the bottom. When they press Enter or click the send button, the JavaScript in `app.js` captures the text.
+The main chat page loads. The user sees a dark-themed interface with a sidebar listing their past conversations. They type a message in the text box at the bottom and press Enter or click the send button.
 
 **Step 6: App sends it to Groq API**  
-The JavaScript sends an HTTP POST request to `/api/chat` with the user's message, selected model, session ID, and settings (temperature, memory toggle). The Flask route in `routes/chat.py` receives this. It:
-1. Checks if any documents have been uploaded and performs a similarity search (RAG)
-2. Loads the last 6 messages of the current conversation for context
-3. Builds a structured prompt combining the context, document results, and user question
-4. Makes an HTTP request to Groq's API with streaming enabled
+The JavaScript in the browser sends the message to the server via a `POST /api/chat` request. The server:
+- Checks if the user is logged in (session validation)
+- Optionally retrieves relevant text from any uploaded documents (RAG)
+- Optionally retrieves the last 6 messages from that chat (memory context)
+- Assembles a full prompt and sends it to the **Groq API** via an HTTP request
 
 **Step 7: AI generates response**  
-Groq's servers run the selected LLM (e.g., LLaMA 3.1 8B) and begin generating the response one "token" (roughly one word or word-piece) at a time. They send each token back to QUOKKA's server as it's generated.
+Groq's servers run the LLaMA model and generate a response. Instead of waiting for the entire response to be ready, Groq streams it back token by token (a "token" is roughly a word or part of a word).
 
 **Step 8: Response streams back word by word**  
-Groq sends the tokens using a format called Server-Sent Events (SSE). QUOKKA's server passes each token directly to the browser without waiting for the full response. The JavaScript in `app.js` reads each incoming token using the browser's `ReadableStream` API and appends it to the chat bubble in real time.
+Each small piece (token) arrives as a Server-Sent Event (SSE). The server forwards each piece to the browser. The browser appends each piece to the chat bubble in real time — the user sees the text appearing word by word, just like ChatGPT.
 
 **Step 9: User sees the answer**  
-The user watches the AI's answer appear word by word, just like watching someone type. When the response is complete, the JavaScript renders the text as Markdown (so code blocks, bold text, and lists look properly formatted). The complete conversation is saved to the SQLite database.
+When all tokens have arrived, the browser renders the final response as formatted Markdown (so headings, bold text, code blocks, bullet lists all look proper). Action buttons appear under the response: Copy and Regenerate.
 
 ---
 
-### What happens when a user uploads a PDF?
+### What happens when a user uploads a PDF
 
-1. The user clicks the paperclip icon in the chat input.
-2. They select a `.pdf`, `.docx`, or `.txt` file. The browser sends it via `FormData` to `/api/upload`.
-3. `routes/upload.py` saves the file to the `uploads/` folder.
-4. The first 2,500 characters are extracted and sent to the Groq API, which generates a **document summary**, a list of **topics**, and **suggested questions** to ask about it. These are shown to the user instantly.
-5. In a **background thread**, the complete document is processed: text is extracted, split into chunks (~400 words each), each chunk is converted into a numerical vector by the `BAAI/bge-small-en-v1.5` embedding model, and all vectors are stored in a FAISS index on disk.
-6. From this point on, every chat message triggers a vector search against this index. If relevant passages are found, they are injected into the prompt automatically.
+1. User clicks the **paperclip icon** in the chat input area.
+2. Browser opens a file picker. User selects a PDF, DOCX, or TXT file (max 15 MB, max 50 pages for PDF).
+3. The file is sent to `POST /api/upload`.
+4. The server:
+   - Validates the file type and size
+   - Saves the file to the `uploads/` folder
+   - Reads all the text out of the file (using `pypdf` for PDFs, `python-docx` for DOCX)
+   - Splits the text into overlapping chunks of ~400 words each (max 100 chunks)
+   - Runs each chunk through the `BAAI/bge-small-en-v1.5` embedding model to convert it into a list of 384 numbers (a "vector")
+   - Saves all vectors into a FAISS index file on disk
+5. The chat input shows "filename.pdf (Indexed ✓)"
 
----
-
-### What happens when private mode is on?
-
-1. The user toggles the "Private Chat" switch in the header.
-2. The `private-warning` banner appears: "Private Mode Active (Messages are not saved)."
-3. All chat messages are kept only in the JavaScript variable `privateMessages` in the browser's memory — nothing is sent to the server for storage.
-4. The `session_id` is not sent with chat requests, so the server never attempts to save the conversation.
-5. When the user closes the tab or refreshes, all private messages are gone permanently.
+From this point on, every question the user asks will first search the document. If relevant chunks are found (above a 55% similarity threshold), they are injected into the prompt so the AI can use them to answer.
 
 ---
 
-### What happens when user exports a chat?
+### What happens when Private Mode is on
 
-1. The user clicks the TXT or PDF button in the top header.
-2. The JavaScript opens a new browser tab pointing to `/api/chat/{id}/export?format=txt` (or `pdf`).
-3. `routes/sessions.py` fetches the full chat from the database.
-4. For **TXT**: The chat is formatted as plain text and returned as a downloadable file.
-5. For **PDF**: The `fpdf2` library creates a PDF document with each message formatted with role labels, and it is returned as a downloadable file.
+1. User toggles the **Private Chat** switch in the header.
+2. The sidebar blurs and becomes unclickable.
+3. A red warning banner appears: "Private Mode Active (Messages are not saved)".
+4. The JavaScript keeps a `privateMessages` array in browser memory only — this is never sent to the server for storage.
+5. When the user closes the tab, all private messages are permanently gone.
+6. Document RAG is also disabled in private mode.
+
+---
+
+### What happens when user exports a chat
+
+1. User opens the Settings modal (gear icon) and clicks **TXT** or **PDF**.
+2. The browser opens `GET /api/chat/{id}/export?format=txt` (or `?format=pdf`) in a new tab.
+3. The server fetches the full chat from the SQLite database.
+4. For TXT: writes the conversation as plain text into a `BytesIO` buffer and returns it as a file download.
+5. For PDF: uses the `FPDF2` library to create a formatted PDF document with bold role labels and wraps long text into multi-line cells.
+6. The browser automatically downloads the file.
 
 ---
 
@@ -149,11 +170,12 @@ The user watches the AI's answer appear word by word, just like watching someone
 QUOKKA/
 ├── app.py
 ├── requirements.txt
-├── README.md
-├── PROJECT_REPORT.md
 ├── .env
 ├── .gitignore
-├── sessions.db                  ← legacy SQLite file (not used; active DB is in data/)
+├── gunicorn.conf.py
+├── render.yaml
+├── README.md
+├── PROJECT_REPORT.md
 │
 ├── routes/
 │   ├── auth.py
@@ -166,7 +188,9 @@ QUOKKA/
 │   ├── chat_storage.py
 │   ├── document_store.py
 │   ├── faiss_store.py
-│   └── pinecone_store.py
+│   ├── pinecone_store.py
+│   ├── doc_data/           (auto-created, git-ignored)
+│   └── faiss_data/         (per-session FAISS files, git-ignored)
 │
 ├── models/
 │   ├── model_router.py
@@ -192,10 +216,12 @@ QUOKKA/
 │       ├── app.js
 │       └── auth.js
 │
-├── data/                        ← auto-created; holds chats.db (SQLite)
-├── uploads/                     ← auto-created; holds uploaded documents
-├── memory/doc_data/             ← auto-created; holds FAISS document index
-└── memory/faiss_data/           ← auto-created; holds per-session FAISS indexes
+├── data/                   (auto-created, git-ignored)
+│   ├── chats.db
+│   └── chats.json.bak
+│
+├── uploads/                (auto-created, git-ignored)
+└── sessions.db             (Flask session store, git-ignored)
 ```
 
 ---
@@ -205,65 +231,1117 @@ QUOKKA/
 ---
 
 #### `app.py`
+- **What it is:** The main Flask application entry point. This is the first file Python runs when the app starts.
+- **What it does:**
+  - Creates the Flask `app` object
+  - Loads environment variables from `.env`
+  - Sets the secret key (used to sign session cookies) and the 15 MB file upload limit
+  - Registers all four Blueprints (auth, chat, sessions, upload) — connecting their routes to the app
+  - Defines the six page routes (`/`, `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/profile`) — these serve HTML pages
+  - Has a `/test-email` debug route to confirm the email service works
+  - Has a `warmup()` function that runs in a background thread at startup — if RAG is enabled, it pre-loads the embedding model so the first upload isn't slow
+  - When run directly (`python app.py`), starts the Flask development server on the port from `.env`
+- **Talks to:** `routes/chat.py`, `routes/sessions.py`, `routes/upload.py`, `routes/auth.py`, `services/mail_service.py`, `models/embedding_manager.py`, `memory/document_store.py`
+- **Why needed:** Without this file, nothing works. It is the glue that binds all parts of the application together.
 
-**What it is:** The main entry point and application factory for the entire Flask web application.
+---
 
-**What it does:**
-- Creates the Flask application object
-- Configures Flask-Mail with Gmail SMTP settings from environment variables
-- Registers the four route Blueprints: `chat_bp`, `sessions_bp`, `upload_bp`, `auth_bp`
-- Defines page routes (`/`, `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/profile`) that serve HTML templates
-- Runs a **background warmup thread** on startup: if documents exist, it pre-loads the embedding model into RAM so the first chat request doesn't lag
-- Starts the Flask development server when run directly
+#### `requirements.txt`
+- **What it is:** A plain text file listing every Python package this project needs.
+- **What it does:** When you run `pip install -r requirements.txt`, Python installs all listed packages from PyPI (Python's package registry). The first line `--extra-index-url https://download.pytorch.org/whl/cpu` tells pip to also look in PyTorch's package registry to get the CPU-only version of PyTorch (smaller, no GPU needed).
+- **Talks to:** Nothing at runtime — it is only used during installation.
+- **Why needed:** Without it, developers and deployment servers have no way to know which packages to install.
 
-**Talks to:** `routes/chat.py`, `routes/sessions.py`, `routes/upload.py`, `routes/auth.py`, `memory/document_store.py`, `models/embedding_manager.py`
+---
 
-**Why needed:** Without this file, the server doesn't exist. It's the spine that connects every other component.
+#### `.env`
+- **What it is:** A file containing secret configuration values that should never be committed to version control.
+- **What it does:** Stores: `SECRET_KEY`, `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `BASE_URL`, `FLASK_ENV`, `PORT`, `GROQ_API_KEY`.
+- **Talks to:** `app.py` loads it with `python-dotenv`; all other files read from `os.environ`.
+- **Why needed:** Separates secrets from code. If this file were in Git, anyone with access to the repository could steal the API keys and send emails from your account.
+- **⚠️ Important:** This file is listed in `.gitignore` and should never be pushed to GitHub.
 
-```python
-# Example: the warmup thread that loads models before the first request
-def warmup():
-    import time
-    time.sleep(1)
-    if doc_store.has_documents():
-        get_embedding_model("BAAI/bge-small-en-v1.5")
-```
+---
+
+#### `.gitignore`
+- **What it is:** A Git configuration file that tells Git which files to ignore.
+- **What it does:** Prevents `.env`, `venv/`, `__pycache__/`, `*.pyc`, `*.db`, `sessions.db`, `memory/faiss_data/`, `data/`, `uploads/`, `*.npy`, `*.faiss`, and `.DS_Store` from being committed to the repository.
+- **Talks to:** Git only.
+- **Why needed:** Prevents secrets, large binary files, and auto-generated caches from polluting the repository.
+
+---
+
+#### `gunicorn.conf.py`
+- **What it is:** Configuration file for the Gunicorn production web server.
+- **What it does:** Sets three parameters:
+  - `workers = 1` — run only one worker process (appropriate for a free Render instance with limited RAM, especially since the embedding model is large)
+  - `worker_class = "sync"` — use the standard synchronous worker (SSE streaming requires `sync` or `eventlet`)
+  - `timeout = 120` — kill a worker if it hasn't responded in 120 seconds (prevents hung processes)
+- **Talks to:** Gunicorn reads this file when started with `--config gunicorn.conf.py`.
+- **Why needed:** Without it, Gunicorn would use defaults that might timeout during long AI generations.
+
+---
+
+#### `render.yaml`
+- **What it is:** A deployment configuration file for the Render cloud hosting platform.
+- **What it does:** Tells Render to:
+  - Create a web service named `quokka-ai`
+  - Use Python runtime
+  - Build by running `pip install -r requirements.txt`
+  - Start by running `gunicorn app:app --config gunicorn.conf.py`
+  - Use Python version 3.10.0
+- **Talks to:** Render's deployment pipeline reads this file automatically.
+- **Why needed:** Allows one-click deployment to Render — instead of manually configuring everything in the Render dashboard.
+
+---
+
+#### `README.md`
+- **What it is:** The project's public-facing documentation shown on GitHub.
+- **What it does:** Explains what QUOKKA is, lists features, shows the tech stack, explains setup steps, documents all API endpoints, and explains deployment.
+- **Talks to:** Nobody — it is documentation for humans.
+- **Why needed:** Essential for any open-source project so others can understand and use it.
 
 ---
 
 #### `routes/auth.py`
-
-**What it is:** The complete authentication system — handles everything related to user identity.
-
-**What it does:** Defines 9 API endpoints:
-- `POST /api/auth/register` — validate input, hash password, create user, send OTP email
-- `POST /api/auth/verify-otp` — check OTP validity, mark account verified, start session
-- `POST /api/auth/resend-otp` — generate new OTP and resend
-- `POST /api/auth/login` — verify credentials, create session
-- `POST /api/auth/logout` — clear session
-- `POST /api/auth/forgot-password` — generate reset token, send reset email
-- `POST /api/auth/reset-password` — validate token, update password hash
-- `GET /api/auth/me` — return current user info (used by frontend on load)
-- `GET /api/auth/profile` — return full profile + chat count
-- `PUT /api/auth/profile` — update display name
-- `PUT /api/auth/change-password` — verify current password, update to new hash
-- `DELETE /api/auth/account` — delete all user data
-
-**Talks to:** `memory/chat_storage.py` (for all DB operations), `services/mail_service.py` (to send emails), `routes/auth_middleware.py` (for `@login_required`)
-
-**Why needed:** Provides complete user account management with email-verified identity.
+- **What it is:** The complete authentication system — register, verify OTP, resend OTP, login, logout, forgot password, reset password, profile management, and account deletion.
+- **What it does:**
+  - `POST /api/auth/register` — validates name/email/password, creates user, sends OTP
+  - `POST /api/auth/verify-otp` — checks OTP, marks user verified, creates session
+  - `POST /api/auth/resend-otp` — generates new OTP, sends it, resets attempt counter
+  - `POST /api/auth/login` — checks password hash, creates session
+  - `POST /api/auth/logout` — clears session
+  - `POST /api/auth/forgot-password` — generates reset token, sends email link
+  - `POST /api/auth/reset-password` — validates token, updates password hash
+  - `GET /api/auth/me` — returns currently logged-in user info
+  - `GET /api/auth/profile` — returns full profile + chat count
+  - `PUT /api/auth/profile` — updates display name
+  - `PUT /api/auth/change-password` — verifies current password, updates hash
+  - `DELETE /api/auth/account` — deletes user + all their chats
+- **Talks to:** `memory/chat_storage.py` (all database operations), `services/mail_service.py` (sending emails), `routes/auth_middleware.py` (login_required decorator)
+- **Why needed:** Without this file, there is no user system — anyone could access the app without an account.
 
 ---
 
 #### `routes/auth_middleware.py`
+- **What it is:** A tiny utility file containing one function: the `login_required` decorator.
+- **What it does:**
+  ```python
+  def login_required(f):
+      @wraps(f)
+      def decorated(*args, **kwargs):
+          if "user_id" not in session:
+              return jsonify({"error": "Unauthorized", "redirect": "/login"}), 401
+          return f(*args, **kwargs)
+      return decorated
+  ```
+  When you put `@login_required` above a route function, it wraps that function. Before the route runs, it checks if `user_id` is in the Flask session. If not, it returns a 401 Unauthorized response immediately. If yes, it proceeds normally.
+- **Talks to:** Used by `routes/auth.py`, `routes/chat.py`, `routes/sessions.py`, `routes/upload.py`.
+- **Why needed:** Prevents unauthenticated users from accessing chat, upload, and session endpoints.
 
-**What it is:** A single-function utility file providing a route protection decorator.
+---
 
-**What it does:** Defines `login_required` — a Python decorator that wraps any route function. Before the route executes, it checks whether `user_id` is present in the Flask session. If not, it immediately returns a 401 Unauthorized JSON response with a redirect hint.
+#### `routes/chat.py`
+- **What it is:** The core of the application — the route that handles every chat message.
+- **What it does:**
+  1. Receives `POST /api/chat` with message, model, session_id, is_private, temperature, memory_enabled
+  2. Validates the message (not empty, not over 4,000 characters)
+  3. If not private and documents exist: runs RAG retrieval, filters results by 55% similarity threshold, calculates confidence percentage
+  4. If memory is enabled: fetches the last 6 messages from the chat history
+  5. Assembles the full prompt (system instruction + document context + chat history + user question)
+  6. Calls `ask_llm_stream()` which streams tokens from Groq
+  7. Yields each token as an SSE event (`data: {"text": "..."}`)
+  8. After the full response: if documents were used, yields a metadata event with source filenames and confidence score
+  9. If not private: saves user message and AI response to SQLite, auto-titles the chat
+- **Talks to:** `models/model_router.py` (Groq API), `memory/document_store.py` (RAG), `memory/chat_storage.py` (saving messages), `routes/auth_middleware.py`
+- **Why needed:** Without this file, there is no chat functionality.
 
-**Talks to:** Used by `routes/auth.py` on profile-related endpoints.
+---
 
-**Why needed:** Without this, profile and account management routes would be accessible without being logged in.
+#### `routes/sessions.py`
+- **What it is:** The chat session management routes — creating, listing, loading, renaming, deleting, pinning, searching, and exporting chats.
+- **What it does:**
+  - `GET /api/chats` — returns all non-private chats for the sidebar
+  - `POST /api/chat/new` — creates a new chat row in the database
+  - `GET /api/chat/<id>` — returns a chat with its full message history
+  - `PUT /api/chat/<id>` — renames a chat
+  - `DELETE /api/chat/<id>` — deletes a chat and its FAISS session data
+  - `PUT /api/chat/<id>/pin` — toggles pin/unpin
+  - `GET /api/chats/search` — searches chats by title or message content
+  - `GET /api/chat/<id>/export` — exports as TXT or PDF using FPDF2
+- **Talks to:** `memory/chat_storage.py` (all database operations), `memory/faiss_store.py` (deletes FAISS data on chat delete)
+- **Why needed:** Without this file, users cannot manage their conversations.
+
+---
+
+#### `routes/upload.py`
+- **What it is:** The file upload endpoint.
+- **What it does:**
+  1. Receives `POST /api/upload` with a multipart file
+  2. Validates: file must be present, not empty, must be PDF/TXT/DOCX extension
+  3. Sanitizes the filename with `secure_filename()` to prevent path traversal attacks
+  4. Saves to `uploads/` directory (creates it if needed)
+  5. Double-checks file size (≤15 MB)
+  6. For PDFs: reads page count with pypdf; rejects if > 50 pages
+  7. Calls `doc_store.process_file()` to extract text, chunk it, embed it, and save to FAISS
+  8. Returns success with filename and size
+- **Talks to:** `memory/document_store.py`, `routes/auth_middleware.py`
+- **Why needed:** Without this file, RAG document upload does not work.
+
+---
+
+#### `memory/chat_storage.py`
+- **What it is:** The complete data access layer for the SQLite database. All reading and writing of chats, messages, and users goes through this file.
+- **What it does:** Defines and initializes the database schema, then provides functions for every database operation:
+  - **Chat operations:** `create_chat`, `get_all_chats`, `get_chat`, `update_chat_title`, `append_message`, `delete_chat`, `toggle_pin_chat`, `search_chats`, `update_summary`, `trim_messages`
+  - **User operations:** `create_user`, `get_user_by_email`, `get_user_by_id`, `get_user_by_reset_token`, `set_user_otp`, `increment_otp_attempts`, `verify_user_email`, `set_reset_token`, `update_password`, `clear_reset_token`, `delete_unverified_user`, `update_user_name`, `get_user_chat_count`, `delete_user_account`
+  - Also handles migration from an old JSON-based storage format to SQLite on first run
+  - Called `init_storage()` automatically on import to create tables if they don't exist
+- **Talks to:** SQLite via Python's built-in `sqlite3` library. The database file is at `data/chats.db`.
+- **Why needed:** Every feature that persists data relies on this file.
+
+---
+
+#### `memory/document_store.py`
+- **What it is:** The RAG (Retrieval-Augmented Generation) document processing and retrieval engine.
+- **What it does:**
+  - `extract_text(file_path)` — reads raw text from PDF (pypdf), DOCX (python-docx), or TXT files
+  - `chunk_text(text, chunk_size=400, overlap=50)` — splits text into overlapping paragraph-aware chunks of ~400 words
+  - `process_file(file_path, filename)` — full ingestion pipeline: extract → chunk → embed → add to FAISS → save to disk. Limits to 100 chunks max per document.
+  - `retrieve_context(query, top_k=5)` — embeds the query, searches FAISS for the top-5 closest chunks, returns their text, source filename, and L2 distance score
+  - `has_documents()` — quickly checks if any documents have been indexed
+  - Uses `BAAI/bge-small-en-v1.5` (via `embedding_manager.py`) instead of the class-default `all-MiniLM-L6-v2`
+  - Persists the FAISS index and chunk arrays to `memory/doc_data/`
+- **Talks to:** `models/embedding_manager.py` (to get the embedding model), `faiss` library (vector operations), `pypdf` and `python-docx` (text extraction)
+- **Why needed:** This is the intelligence behind document Q&A. Without it, uploaded files would not influence AI responses at all.
+
+---
+
+#### `memory/faiss_store.py`
+- **What it is:** A per-session vector store for conversation memory (currently NOT wired into the active pipeline).
+- **What it does:** Implements `FaissStore` — a class that would store each chat message as a vector and retrieve semantically relevant past messages. Has a clear comment at the top:
+  > "NOTE: FaissStore is NOT currently wired into the active request pipeline. It is reserved for future per-session semantic memory."
+  
+  Currently, `delete_session()` IS used by `routes/sessions.py` to clean up FAISS files when a chat is deleted. The `store_message()` and `retrieve_context()` functions are implemented but not called from anywhere in the active pipeline.
+  
+  The `memory/faiss_data/` directory contains `.faiss` and `.json` files named by chat UUID — these were created during development/testing.
+- **Talks to:** `models/embedding_manager.py` (lazy-loaded), FAISS library
+- **Why needed:** For cleanup on chat deletion (active use); for future semantic memory (planned use).
+
+---
+
+#### `memory/pinecone_store.py`
+- **What it is:** A placeholder stub for a future Pinecone-based vector store.
+- **What it does:** Defines `PineconeStore` with empty `store_message()` and `retrieve_context()` methods. All methods have `# TODO` comments explaining what they would do. Nothing is implemented. This file is currently not imported or used anywhere in the active application.
+- **Talks to:** Nothing (stub only).
+- **Why needed:** Reserved for a future migration from local FAISS to the Pinecone cloud vector database.
+
+---
+
+#### `models/model_router.py`
+- **What it is:** The Groq API client — the file that sends prompts to the AI and returns responses.
+- **What it does:**
+  - Defines a mapping from internal model names to Groq model IDs:
+    ```python
+    GROQ_MODEL_MAP = {
+        "llama3.1:8b":  "llama-3.1-8b-instant",
+        "llama3.1:70b": "llama-3.3-70b-versatile",
+    }
+    ```
+  - `ask_llm_stream(prompt, model, temperature)` — sends a POST request to `https://api.groq.com/openai/v1/chat/completions` with `"stream": True`. Iterates over the response line by line. Each line that starts with `data: ` and contains a delta token is yielded as `data: {"text": "..."}`. When `[DONE]` is received, iteration stops.
+  - `ask_llm_json(prompt, model, temperature)` — same request but with `"stream": False`. Returns the complete response parsed as JSON. (Used for non-streaming calls, though currently only `ask_llm_stream` is called from the chat route.)
+- **Talks to:** The Groq API over HTTPS via the `requests` library.
+- **Why needed:** Without this file, the app cannot communicate with the AI model.
+
+---
+
+#### `models/embedding_manager.py`
+- **What it is:** A singleton manager for the sentence embedding model, ensuring it is loaded only once.
+- **What it does:**
+  - Uses a class-level variable and a threading lock to ensure only one instance of `SentenceTransformer` is ever created, even if multiple threads call `get_model()` simultaneously.
+  - Default model: `BAAI/bge-small-en-v1.5` (overridable by passing a different name).
+  - Lazy-loads the model on first call — avoids loading a large model at startup if it's not needed.
+- **Talks to:** `sentence_transformers` library (which downloads the model from HuggingFace on first use).
+- **Why needed:** Loading a SentenceTransformer model takes several seconds and uses significant RAM. Without this singleton, every RAG request would re-load the model.
+
+---
+
+#### `services/__init__.py`
+- **What it is:** An empty Python file (2 bytes) that marks the `services/` directory as a Python package.
+- **What it does:** Allows Python to import from `services.mail_service` using package syntax.
+- **Talks to:** Nothing.
+- **Why needed:** Python requires a `__init__.py` file in a directory for it to be treated as an importable package.
+
+---
+
+#### `services/mail_service.py`
+- **What it is:** The email sending service, implemented using the **Brevo HTTP API** (not SMTP).
+- **What it does:**
+  - `_send(to_email, to_name, subject, html_body)` — core function. Reads `BREVO_API_KEY` and `MAIL_FROM` from environment. Constructs a JSON payload and POSTs it to `https://api.brevo.com/v3/smtp/email`. Raises a `RuntimeError` if the API returns a non-2xx response.
+  - `_wrap(body)` — wraps any HTML content in a full email template with the QUOKKA brand (dark background, lime-green heading, proper HTML structure).
+  - `send_otp_email(email, name, otp)` — sends the 6-digit verification code email with a styled OTP display box.
+  - `send_reset_email(email, name, reset_link)` — sends the password reset email with a styled "Reset Password" button linking to the reset URL.
+  - `send_welcome_email(email, name)` — sends a welcome email after successful OTP verification.
+  - **Note:** The `.env` file still has `MAIL_SERVER/MAIL_PORT/MAIL_USERNAME/MAIL_PASSWORD` (Gmail SMTP settings) but the actual code uses only Brevo HTTP API. The Gmail settings are legacy and not used by the current code. `BREVO_API_KEY` and `MAIL_FROM` are what the production code actually needs.
+- **Talks to:** Brevo's API over HTTPS (via `requests`). Called from `routes/auth.py`.
+- **Why needed:** Email verification and password reset are impossible without this service.
+
+---
+
+#### `templates/index.html`
+- **What it is:** The main chat page — the primary interface users see after logging in.
+- **What it does:** Defines the full HTML structure:
+  - **Sidebar** (left): "New Chat" button, search box, chat list (dynamically populated by JS), sidebar footer with user avatar/username, settings button, and logout button.
+  - **Main content** (right): header with model selector dropdown (`LLaMA 3.1 8B ⚡ Fast` / `LLaMA 3.3 70B 🔥 Smart`), export TXT/PDF buttons, Private Chat toggle. Below the header: private mode warning banner (hidden by default), chat messages area, and at the bottom: file upload button (paperclip icon), text input textarea, and send button.
+  - **Settings Modal**: slider for Temperature (0–1), toggle for Memory Context, and a model guide text.
+  - Loads `Inter` font from Google Fonts, Phosphor Icons, `styles.css`, `marked.min.js` (for Markdown), and `app.js`.
+- **Talks to:** `static/css/styles.css`, `static/js/app.js`
+- **Why needed:** Without this HTML structure, there is no user interface for the chat.
+
+---
+
+#### `templates/login.html`
+- **What it is:** The login page.
+- **What it does:** Contains two cards (only one visible at a time):
+  - **Login card**: email + password fields, login button, "Forgot password?" and "Sign up" links. If the account is unverified, a "Verify my email instead" button appears that triggers the OTP card.
+  - **OTP card**: 6 individual digit boxes, Verify button, Resend OTP button. Appears when user needs to verify their email.
+  - Inline `<script>` handles `doLogin()`, `showOTPPanel()`, `doVerify()`, `doResend()`, `backToLogin()`.
+- **Talks to:** `static/css/auth.css`, `static/js/auth.js`
+- **Why needed:** Entry point for returning users.
+
+---
+
+#### `templates/signup.html`
+- **What it is:** The registration page.
+- **What it does:** Two cards (one visible at a time):
+  - **Registration card**: name, email, password (with strength bar), confirm password fields. On submit, calls `POST /api/auth/register`.
+  - **OTP card**: same 6-digit boxes as login page. On submit, calls `POST /api/auth/verify-otp`. Shows resend button with 60-second countdown.
+  - Includes real-time password strength bar powered by `auth.js`'s `updateStrength()` function.
+- **Talks to:** `static/css/auth.css`, `static/js/auth.js`
+- **Why needed:** Entry point for new users.
+
+---
+
+#### `templates/forgot_password.html`
+- **What it is:** The "Forgot Password" page.
+- **What it does:** Single email input field. On submit, calls `POST /api/auth/forgot-password`. Always shows the same success message regardless of whether the email exists (to prevent email enumeration). The form hides itself and shows a "check your inbox" message after submission.
+- **Talks to:** `static/css/auth.css`, `static/js/auth.js`
+- **Why needed:** Password recovery flow is impossible without this page.
+
+---
+
+#### `templates/reset_password.html`
+- **What it is:** The password reset page. Users land here by clicking the link in their reset email.
+- **What it does:** Extracts the `?token=...` from the URL using `URLSearchParams`. If no token, shows an error immediately. Otherwise shows two password fields with strength bar. On submit, sends `POST /api/auth/reset-password` with the token and new password. On success, redirects to `/login` after 2.5 seconds.
+- **Talks to:** `static/css/auth.css`, `static/js/auth.js`
+- **Why needed:** Without this page, users who click the reset link would see nothing.
+
+---
+
+#### `templates/profile.html`
+- **What it is:** The user profile management page.
+- **What it does:** A full-page layout with the same sidebar as `index.html` (with navigation but no chat list). Contains five sections:
+  1. **Avatar & Name header** — large letter avatar, display name, email, member-since date (loaded from API)
+  2. **Personal Information** — edit display name (email is disabled/read-only), Save button
+  3. **Change Password** — current password, new password (with strength bar), confirm password
+  4. **Your Activity** — stats grid: Total Chats, Member Since, Account Status (Verified ✓)
+  5. **Danger Zone** — Delete Account button (with a confirmation modal)
+  - A global 401 interceptor redirects to `/login` on any unauthorized response.
+- **Talks to:** `static/css/styles.css`, `static/js/auth.js` (for `putJson`, `togglePw`, etc.)
+- **Why needed:** Gives users control over their account without going to the chat page.
+
+---
+
+#### `static/js/app.js`
+- **What it is:** The main frontend JavaScript file — controls everything that happens on the chat page.
+- **What it does:** (619 lines)
+  - On `DOMContentLoaded`: grabs all DOM element references, sets up all event listeners.
+  - `renderMarkdown(text)` — wraps `marked.parse()` with a fallback HTML-escaping function.
+  - Settings modal open/close, temperature slider update, export button clicks.
+  - `loadSessions(query)` — fetches chat list from the API and calls `renderSessions()`.
+  - `renderSessions(sessions)` — dynamically builds the sidebar chat list with pin/rename/delete buttons. Uses `textContent` (not `innerHTML`) for titles to prevent XSS.
+  - `startNewChat()` — creates a new chat via API, sets `currentSessionId` only after server responds (prevents race conditions).
+  - `switchSession(id)` — loads a specific chat's history and renders all messages.
+  - `updatePrivacyMode(isPrivate)` — toggles the `privacy-mode` CSS class, blurs sidebar, clears messages.
+  - File upload handler — POSTs file to `/api/upload`, shows status in the indicator.
+  - `sendMessage(text)` — the heart of the app:
+    - Adds user message to the UI
+    - Creates an `AbortController` for stream cancellation
+    - Sends POST to `/api/chat` with all settings
+    - Reads the streaming response using `ReadableStream` and `TextDecoder`
+    - Buffers partial SSE events across chunks
+    - Updates the bot bubble live as tokens arrive (`textContent` during streaming for performance)
+    - After stream completes, re-renders with `renderMarkdown()` for proper formatting
+    - Handles metadata events (sources + confidence), title events, error events
+  - `addMessage(text, role)` — renders a message bubble (bot messages use `innerHTML` + `renderMarkdown`, user messages use `textContent` to prevent XSS).
+  - `addMessageActions(messageDiv, text)` — attaches Copy and Regenerate buttons to bot messages.
+  - Init: fetches `/api/auth/me` to populate sidebar username/avatar. Sets up logout button. Overrides `window.fetch` globally so any 401 response triggers a redirect to `/login`.
+- **Talks to:** All API endpoints via `fetch()`. Reads the HTML DOM.
+- **Why needed:** Without this file, the page is a static HTML document with no behavior.
+
+---
+
+#### `static/js/auth.js`
+- **What it is:** A shared utility library for all authentication pages.
+- **What it does:** (149 lines)
+  - `postJson(url, data)` / `putJson(url, data)` — wrapper functions that set `Content-Type: application/json` and parse the JSON response. Handle network errors gracefully.
+  - `showError(id, msg)` / `showSuccess(id, msg)` / `clearAlert(id)` — show/hide styled alert boxes.
+  - `togglePw(inputId, iconId)` — toggles a password field between `type="password"` and `type="text"`, updates the eye icon.
+  - `strengthScore(pw)` — returns 0–3 score based on length, contains digit, contains special char, length ≥ 12.
+  - `updateStrength(pw, fillId, textId)` — updates a password strength bar's width and color.
+  - `setupOTP(containerId)` — wires up the 6-box OTP input: auto-focus next box on input, backspace goes to previous box, paste fills all boxes at once.
+  - `getOTP(containerId)` — collects all 6 digit values and returns them as a single string.
+  - `startCountdown(btnId, secs)` — disables the Resend button and counts down from 60 seconds.
+  - `setLoading(btnId, spinnerId, loading)` — disables a button and shows/hides a spinner.
+- **Talks to:** No API calls directly — provides helpers used by inline scripts in auth HTML pages.
+- **Why needed:** Eliminates code duplication across `login.html`, `signup.html`, `forgot_password.html`, `reset_password.html`, and `profile.html`.
+
+---
+
+#### `static/css/styles.css`
+- **What it is:** The main application stylesheet (887 lines).
+- **What it does:** Defines the complete visual design of the chat interface:
+  - CSS custom properties (`:root`) for the premium dark theme: `--bg-main: #0d0d0d`, `--accent-color: #d9f95d` (lime-green)
+  - App container with a subtle grid background pattern
+  - Sidebar styles: blurred glassmorphism background, chat item hover effects, pinned state
+  - Chat message styles: `slideUp` animation, bot messages left-aligned with lime avatar, user messages right-aligned
+  - Markdown rendering styles: proper `<h1>`–`<h4>`, `<ul>`, `<ol>`, `<code>`, `<pre>`, `<blockquote>`, `<table>`, `<hr>` styling inside `.msg-bubble`
+  - Message action bar: copy and regenerate buttons that fade in on hover
+  - Input area: frosted glass textarea box with lime-green glow on focus
+  - Settings modal: overlay with blur, scale-in animation
+  - Private mode: blurs and disables the sidebar, shows red warning banner
+  - RAG metadata block: styled source list and confidence score below AI responses
+  - Typing indicator: pulsing "Thinking..." animation
+  - Responsive breakpoint at 768px: hides sidebar, adjusts paddings
+- **Talks to:** Referenced by `templates/index.html` and `templates/profile.html`.
+- **Why needed:** Without this file, the app would be an unstyled HTML document.
+
+---
+
+#### `static/css/auth.css`
+- **What it is:** The stylesheet for all authentication pages (280 lines).
+- **What it does:** Defines the auth-specific design:
+  - Dark background (`#080808`) with a subtle grid pattern using the lime-green color
+  - Centered card layout (`max-width: 420px`) with border and box shadow
+  - Field styles: dark inputs, lime-green focus border
+  - Password visibility toggle button
+  - Password strength bar (animated width + color)
+  - OTP boxes: 6 individual square inputs with monospace font, focus border
+  - Spinner animation for loading states
+  - Alert boxes (red for error, green for success)
+  - Resend countdown button styles
+  - Responsive: smaller padding on mobile
+- **Talks to:** Referenced by `login.html`, `signup.html`, `forgot_password.html`, `reset_password.html`.
+- **Why needed:** The auth pages need different styling from the main chat interface — a centered card layout vs. a full-screen split-panel layout.
+
+---
+
+#### `data/chats.db`
+- **What it is:** The main SQLite database file.
+- **What it does:** Stores all persistent data: user accounts, chat sessions, and all messages.
+- **Talks to:** Accessed exclusively through `memory/chat_storage.py`.
+- **Why needed:** This IS the data layer of the entire app.
+
+---
+
+#### `data/chats.json.bak`
+- **What it is:** A backup of the old JSON-based chat storage (before the migration to SQLite).
+- **What it does:** Nothing active — it is a legacy file created by the migration code in `chat_storage.py`. When the app first ran after switching from JSON to SQLite, it migrated all existing chats and renamed the JSON file with a `.bak` extension to avoid re-migrating on the next startup.
+- **Why needed:** Historical artifact; safe to delete if you want to clean up.
+
+---
+
+#### `memory/faiss_data/*.faiss` and `memory/faiss_data/*.json`
+- **What they are:** Per-session FAISS index files and their metadata.
+- **What they do:** Each pair of files is named after a chat UUID. The `.faiss` file is the binary vector index; the `.json` file maps vector indices to message role/content. These were created by `faiss_store.py` during testing.
+- **Why they exist:** Left over from development. They are listed in `.gitignore` and would not be in a clean repository.
+
+---
+
+#### `sessions.db`
+- **What it is:** Flask's server-side session storage database.
+- **What it does:** When Flask uses server-side sessions (the default), it stores session data (like `user_id`, `user_email`, `user_name`) in this SQLite file keyed by a session cookie that the user's browser holds.
+- **Why needed:** Without it, login sessions could not persist across page refreshes.
+
+---
+
+## 4. Technology Stack — Deep Explanation
+
+---
+
+### Flask
+
+**What is Flask?**  
+Flask is a lightweight web framework for Python. A web framework provides the scaffolding to receive HTTP requests (from browsers), route them to the correct Python function, run that function, and return an HTTP response. Flask is often called a "micro-framework" because it gives you the essentials without forcing you to use a specific database, authentication system, or template engine.
+
+**Why Flask instead of Django or FastAPI?**
+- **vs. Django:** Django is a "batteries included" framework with its own ORM, admin panel, and migration system. It's powerful but opinionated and heavier. Flask is simpler — you choose each piece yourself, which gives more flexibility for a project like QUOKKA that uses custom storage (SQLite via raw SQL), custom auth, and streaming responses.
+- **vs. FastAPI:** FastAPI is modern and built around async Python, which is excellent for high-concurrency apps. However, streaming SSE responses with FAISS + embedding models in FastAPI requires more careful async handling. Flask's sync model is simpler for CPU-bound tasks (embedding generation).
+
+**What does Flask do in this project specifically?**
+- Receives all HTTP requests from browsers and routes them to the right Python function
+- Manages sessions (the encrypted cookie that keeps users logged in)
+- Renders HTML templates using Jinja2 (built into Flask)
+- Provides the `Blueprint` system to organize routes into separate files
+- Handles file uploads via `request.files`
+- Streams SSE responses via `Response(stream_with_context(...))`
+
+**Which files use Flask?**  
+`app.py`, `routes/auth.py`, `routes/chat.py`, `routes/sessions.py`, `routes/upload.py`
+
+---
+
+### Groq API
+
+**What is an API?**  
+An API (Application Programming Interface) is a way for two computer programs to talk to each other. In this context, it means QUOKKA sends a request (an HTTP POST with the prompt) to Groq's servers, and Groq's servers send back the AI's response. QUOKKA doesn't run the AI itself — it pays Groq to run it and returns the result.
+
+**What is Groq?**  
+Groq (not to be confused with "Grok" by xAI) is a company that built specialized AI inference hardware called LPUs (Language Processing Units) that run large language models extremely fast — often 10–20x faster than standard GPUs. They offer a free API tier. The base URL used in QUOKKA is: `https://api.groq.com/openai/v1/chat/completions`.
+
+**What is LLaMA 3.1 8B and LLaMA 3.3 70B?**  
+LLaMA is a family of open-source large language models created by Meta (Facebook's parent company). The numbers mean:
+- **8B / 70B**: Billion **parameters**. A parameter is a single number inside the neural network that was tuned during training. More parameters = more "knowledge" stored = better answers, but slower and more memory.
+- **3.1 / 3.3**: Version numbers of the LLaMA 3 series.
+- **"instant" / "versatile"**: Groq's naming — "instant" = optimized for speed, "versatile" = optimized for quality.
+
+**What are parameters in an LLM?**  
+Imagine the AI's "brain" as a massive network of connections, each with a numerical weight. When training, these weights are adjusted billions of times until the network can predict the next word well. 8 billion parameters = 8 billion such weights. With 70 billion, the network can capture more nuanced patterns in language. An 8B model fits in about 5–8 GB RAM; a 70B model needs 40+ GB.
+
+**How did we connect to Groq API?**  
+In `models/model_router.py`:
+```python
+response = requests.post(
+    "https://api.groq.com/openai/v1/chat/completions",
+    headers={
+        "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+        "Content-Type": "application/json"
+    },
+    json={
+        "model": "llama-3.1-8b-instant",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "max_tokens": 512,
+        "stream": True
+    },
+    stream=True,
+    timeout=30
+)
+```
+The `Authorization: Bearer gsk_...` header is how Groq authenticates us. Without the correct API key, Groq returns a 401 error.
+
+**What does the response look like?**  
+When streaming, Groq sends lines like:
+```
+data: {"id":"...","choices":[{"delta":{"content":"Hello"},"index":0}]}
+data: {"id":"...","choices":[{"delta":{"content":" world"},"index":0}]}
+data: [DONE]
+```
+Each line delivers a small piece of the response. `choices[0].delta.content` is the actual text token.
+
+**What is streaming and why do we use it?**  
+Streaming means the server sends data as it becomes available, rather than waiting for everything to be ready. Without streaming, users would stare at a blank box for 5–30 seconds waiting for the entire response. With streaming, they see text appearing almost immediately, word by word — dramatically improving the perceived speed and user experience. In HTTP terms, streaming is implemented using chunked transfer encoding and kept-alive connections.
+
+**Where in the code does this happen?**  
+In `models/model_router.py`, the `ask_llm_stream()` function (lines 16–53). It is called from `routes/chat.py` at line 108.
+
+---
+
+### FAISS
+
+**What is FAISS?**  
+FAISS (Facebook AI Similarity Search) is an open-source library from Meta Research for efficient similarity search in high-dimensional vector spaces. Think of it as a super-fast search engine that, instead of matching keywords, matches mathematical vectors.
+
+**What is a vector?**  
+A vector is a list of numbers. For example, `[0.12, -0.45, 0.88, 0.03, ...]`. In this project, each text chunk is converted into a 384-number vector where similar texts produce numerically similar vectors.
+
+**What is vector search?**  
+Given a query vector (e.g., "what are the side effects of aspirin?"), vector search finds the stored vectors that are most numerically similar — and those correspond to the most semantically similar text chunks. This is fundamentally different from keyword search (which looks for exact word matches) — vector search understands meaning.
+
+**Why do we need it for document search?**  
+When you ask "what causes headaches?", a keyword search would only find chunks containing the exact word "headaches". Vector search would also find chunks about "migraines", "pain relief", and "neurological symptoms" because they are semantically related. This is critical for making document Q&A genuinely useful.
+
+**How does it work in this project?**  
+1. User uploads a PDF.
+2. Text is extracted and split into ~400-word chunks.
+3. Each chunk is converted to a 384-dimensional vector by the embedding model.
+4. Vectors are added to a FAISS `IndexFlatL2` index (an exact search index using L2/Euclidean distance).
+5. When a user asks a question, the question is also converted to a vector.
+6. FAISS finds the 5 closest stored vectors (smallest L2 distance).
+7. The corresponding text chunks are retrieved and used in the prompt.
+
+**Which files use it?**  
+`memory/document_store.py` (document RAG), `memory/faiss_store.py` (session memory, not active).
+
+---
+
+### Sentence Transformers (BAAI/bge-small-en-v1.5)
+
+**What is an embedding model?**  
+An embedding model is a neural network that takes text as input and outputs a fixed-size list of numbers (a vector/embedding) that encodes the semantic meaning of the text. Two sentences with similar meaning will have vectors that are close together in the numerical space.
+
+**What does BAAI/bge-small-en-v1.5 do?**  
+"BAAI" = Beijing Academy of Artificial Intelligence. "bge" = BAAI General Embedding. "small" = it is the smallest (and fastest) version. "en" = English. "v1.5" = version 1.5.
+
+It takes any text string and outputs a 384-dimensional vector. It was specifically trained for retrieval tasks — meaning it produces vectors that work well for finding relevant documents. It produces vectors where texts with similar meaning cluster together.
+
+**Why this model specifically?**  
+- **Small footprint**: Only ~130 MB to download, runs on CPU without issues.
+- **Optimized for retrieval**: Outperforms general-purpose models like `all-MiniLM-L6-v2` on retrieval benchmarks.
+- **Fast enough for production**: Can embed 100 chunks in a few seconds on CPU.
+
+**Where is it used in the code?**  
+In `models/embedding_manager.py` — loaded as a singleton on first use. Called by `memory/document_store.py` in `get_model()`, `process_file()`, and `retrieve_context()`.
+
+---
+
+### RAG (Retrieval-Augmented Generation)
+
+**What is RAG? Explain from scratch.**  
+RAG is a technique that improves AI answers by giving the AI relevant information from a real source before asking it to generate a response. Without RAG, the AI only uses its training data (knowledge frozen at its training cutoff). With RAG, the AI can use up-to-date or specific private documents.
+
+Think of RAG like this: instead of asking a student to answer from memory, you give them the textbook chapter and say "read this, then answer the question." The answer is grounded in the provided text, not just the student's general knowledge.
+
+**Why do we need RAG?**  
+- LLMs have a training cutoff — they don't know things that happened after they were trained.
+- LLMs don't have access to your private PDFs, company documents, or research papers.
+- RAG grounds the AI's answers in specific, verifiable sources rather than general knowledge.
+- It reduces "hallucinations" (the AI making things up) because it has real text to reference.
+
+**How does RAG work in QUOKKA step by step?**
+
+1. **Indexing time (when you upload a file):**
+   - Text is extracted from PDF/DOCX/TXT
+   - Text is split into ~400-word chunks with sentence-aware boundaries
+   - Each chunk is embedded into a 384-dimensional vector
+   - All vectors are stored in a FAISS index on disk
+
+2. **Query time (when you send a message):**
+   - Your question is embedded into a vector
+   - FAISS searches for the top 5 most similar chunks
+   - Each result's similarity is computed: `cosine_sim = 1 - (L2_distance / 2)`
+   - Chunks below 55% similarity are filtered out
+   - Remaining chunks are joined and injected into the prompt:
+     ```
+     Use the provided context when relevant...
+     Context:
+     [chunk 1 text]
+     [chunk 2 text]
+     ...
+     ```
+   - The full prompt (system + context + history + question) is sent to Groq
+   - After the response streams, a metadata event is sent with source filenames and the average confidence score
+
+**What happens when you upload a PDF?**  
+See the [Simple Explanation section](#what-happens-when-a-user-uploads-a-pdf) above. In code: `routes/upload.py` validates the file, then calls `memory/document_store.py`'s `process_file()`, which chains: `extract_text()` → `chunk_text()` → `get_model().encode()` → `index.add()` → `save()`.
+
+**How does the AI use the PDF content?**  
+The AI doesn't see the PDF directly. It receives the relevant text chunks inserted into the prompt string. From the AI's perspective, it's just more text in the message. The instructions say "Use the provided context when relevant."
+
+---
+
+### SQLite
+
+**What is SQLite?**  
+SQLite is a relational database engine built into Python's standard library. Unlike PostgreSQL or MySQL (which run as separate server processes you connect to over a network), SQLite stores the entire database in a single file on disk (`data/chats.db`). It's perfect for small to medium applications.
+
+**What tables exist in the database?**  
+Three tables: `chats`, `messages`, and `users`. (See [Section 6 — Database Schema](#6-database-schema) for full details.)
+
+**Why SQLite and not PostgreSQL or MySQL?**
+- **Zero configuration**: No database server to install, configure, or manage.
+- **Works on Render's free tier**: PostgreSQL on Render requires a paid plan; SQLite is just a file.
+- **Sufficient for small user bases**: SQLite handles thousands of concurrent users fine for a chat app.
+- **Downside**: Cannot be shared across multiple server processes/instances (but with `workers=1` in Gunicorn, this is not an issue).
+
+---
+
+### Flask-Mail
+
+**What is Flask-Mail?**  
+Flask-Mail is a Flask extension for sending emails. It integrates with SMTP servers (Simple Mail Transfer Protocol — the standard for email sending). 
+
+**Important note for QUOKKA:** Although `flask-mail` is listed in `requirements.txt`, **the actual email sending code in `services/mail_service.py` does NOT use Flask-Mail**. It uses the **Brevo HTTP API** directly via the `requests` library. The `.env` file still has Gmail SMTP settings (`MAIL_SERVER`, `MAIL_USERNAME`, `MAIL_PASSWORD`) from an earlier version of the code, but these are not used. The reason for the switch was that Gmail SMTP is blocked on some cloud hosting providers (including Render's free tier), while Brevo's HTTPS API works everywhere.
+
+**What is Gmail SMTP?**  
+SMTP is the protocol email servers use to send messages. Gmail operates an SMTP server at `smtp.gmail.com:587`. You can connect to it from Python and send emails as if they came from your Gmail address.
+
+**What is an App Password and why is it needed?**  
+Google no longer allows using your regular Gmail password to authenticate SMTP connections. Instead, you must generate an "App Password" — a 16-character random password specifically for apps. It is required because Google's 2-Step Verification blocks regular password logins for programmatic access.
+
+**What emails does QUOKKA send?**
+1. **OTP verification email** — sent during registration and on resend OTP requests
+2. **Password reset email** — sent when user requests a forgotten password reset
+3. **Welcome email** — sent once after successful email verification
+
+---
+
+### Werkzeug
+
+**What is Werkzeug?**  
+Werkzeug is the underlying WSGI toolkit that Flask is built on. It handles HTTP request/response objects, URL routing, and many utilities. In QUOKKA, it is used specifically for **password hashing**.
+
+**How is it used for password security?**  
+Two functions are imported from `werkzeug.security`:
+```python
+from werkzeug.security import check_password_hash, generate_password_hash
+```
+- `generate_password_hash(password)` — takes a plain-text password and returns a long scrambled string like `scrypt:32768:8:1$abc123$abc...` (the hash).
+- `check_password_hash(stored_hash, provided_password)` — returns True if the provided password matches the stored hash.
+
+**What is password hashing and why is it important?**  
+Hashing is a one-way mathematical operation. Given "mypassword123", the hash is always the same (e.g., `scrypt:32768:8:1$...`). But given only the hash, you cannot reverse it to get "mypassword123".
+
+This is critical because: **databases get hacked**. If passwords were stored as plain text and a hacker dumped your database, they would immediately have everyone's passwords. With proper hashing (using scrypt, bcrypt, or PBKDF2), even if the database is stolen, the passwords cannot be recovered in any reasonable amount of time.
+
+---
+
+### FPDF2
+
+**What is FPDF2?**  
+FPDF2 is a Python library for generating PDF files programmatically. It creates PDF documents by placing text, images, and shapes at specific positions on a page.
+
+**How is PDF export implemented?**  
+In `routes/sessions.py`, the `export_chat()` function:
+```python
+pdf = FPDF()
+pdf.add_page()
+pdf.set_font("Arial", size=12)
+pdf.cell(200, 10, txt=safe_text(f"Chat: {title}"), ln=1, align="C")
+for m in messages:
+    pdf.set_font("Arial", 'B', 11)        # Bold for role
+    pdf.cell(200, 10, txt=f"{m['role'].upper()}:", ln=1)
+    pdf.set_font("Arial", '', 11)
+    pdf.multi_cell(0, 10, txt=m['content'])  # Wraps long text
+```
+A `safe_text()` function converts Unicode characters to Latin-1 (replacing unknowns with `?`) because the Arial font in FPDF2 doesn't support all Unicode characters. The output is written to a `BytesIO` buffer and returned as a file download.
+
+---
+
+### Gunicorn
+
+**What is Gunicorn?**  
+Gunicorn (Green Unicorn) is a production-grade Python WSGI (Web Server Gateway Interface) HTTP server. It acts as the bridge between the raw HTTP connections from the internet and your Flask application.
+
+**Why can't we use Flask's built-in server in production?**  
+Flask's development server (`app.run()`) is single-threaded, not optimized for performance, not hardened against security issues, and Werkzeug itself warns you "Do not use the development server in a production environment." It is designed for debugging during development, not for handling real users.
+
+**How does Gunicorn help?**  
+Gunicorn manages worker processes, handles connection queueing, enforces timeouts, and can be configured to handle concurrent requests. With `workers=1` in `gunicorn.conf.py`, it runs one worker process (appropriate for the low RAM budget of a free Render instance that must also run the embedding model).
+
+Start command on Render: `gunicorn app:app --config gunicorn.conf.py`  
+This means: start Gunicorn, load the `app` object from `app.py`, using the config from `gunicorn.conf.py`.
+
+---
+
+## 5. All Dependencies Explained
+
+| Package | Purpose | Used In | If Removed |
+|---------|---------|---------|------------|
+| `flask` | Web framework — handles HTTP routing, sessions, templates | `app.py`, all routes | App cannot start |
+| `flask-mail` | Email extension for Flask (listed but not actively used — Brevo API is used instead) | `requirements.txt` only | No functional impact (currently unused) |
+| `flask-cors` | Adds CORS headers to allow cross-origin requests | Available but not explicitly configured in code | No functional impact if same-origin only |
+| `gunicorn` | Production WSGI server | `render.yaml` start command | Cannot start in production (only dev server) |
+| `python-dotenv` | Loads `.env` file into `os.environ` | `app.py` (line 5: `load_dotenv()`) | All env variables must be set manually in the shell |
+| `werkzeug` | Password hashing, file security utilities | `routes/auth.py` (`check_password_hash`, `generate_password_hash`), `routes/upload.py` (`secure_filename`) | Passwords cannot be hashed; filenames not sanitized |
+| `requests` | HTTP client for making API calls | `models/model_router.py` (Groq API), `services/mail_service.py` (Brevo API) | Cannot call Groq API or send emails |
+| `sentence-transformers` | Loads and runs sentence embedding models | `models/embedding_manager.py` | RAG (document search) completely broken |
+| `faiss-cpu` | Vector similarity search library | `memory/document_store.py`, `memory/faiss_store.py` | RAG cannot index or search documents |
+| `numpy` | Numerical arrays for FAISS operations | `memory/document_store.py`, `memory/faiss_store.py` | FAISS vectors cannot be created or manipulated |
+| `pypdf` | Reads text from PDF files | `memory/document_store.py` (extract_text), `routes/upload.py` (page count check) | PDF uploads fail |
+| `python-docx` | Reads text from DOCX files | `memory/document_store.py` (extract_text) | DOCX uploads fail |
+| `fpdf2` | Generates PDF files for chat export | `routes/sessions.py` (export_chat) | PDF export fails (TXT export still works) |
+| `torch` | Deep learning framework (required by sentence-transformers) | Indirect — `sentence-transformers` depends on it | sentence-transformers fails to load |
+| `accelerate` | Optimizes model loading (required by some transformers) | Indirect dependency | Model loading may be slower or fail |
+
+---
+
+## 6. Database Schema
+
+The database file is `data/chats.db`. It contains three tables.
+
+---
+
+### Table: `users`
+
+Stores one row per registered user account.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER PRIMARY KEY AUTOINCREMENT | Unique user ID, auto-incremented |
+| `name` | TEXT NOT NULL | Display name (e.g., "Alice Smith") |
+| `email` | TEXT UNIQUE NOT NULL | Email address, stored lowercase. Must be unique. |
+| `password_hash` | TEXT NOT NULL | Werkzeug scrypt hash of the password. Never the plain-text password. |
+| `is_verified` | INTEGER DEFAULT 0 | 0 = unverified (OTP not yet entered), 1 = verified |
+| `otp` | TEXT | The 6-digit OTP code currently active (NULL after verification) |
+| `otp_expiry` | TEXT | ISO datetime string when the OTP expires (10 min after generation) |
+| `otp_attempts` | INTEGER DEFAULT 0 | Number of wrong OTP attempts. Account deleted at 5. |
+| `reset_token` | TEXT | URL-safe random token for password reset (NULL when not in reset flow) |
+| `reset_token_expiry` | TEXT | ISO datetime string when the reset token expires (15 min) |
+| `created_at` | TEXT | ISO datetime string when the account was created |
+
+---
+
+### Table: `chats`
+
+Stores one row per chat session.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `chat_id` | TEXT PRIMARY KEY | UUID string (e.g., `"a534b925-ee0c-..."`) — serves as the unique identifier |
+| `title` | TEXT | Chat name shown in sidebar. Auto-set to first 30 chars of first message. |
+| `is_private` | INTEGER DEFAULT 0 | 0 = normal chat, 1 = private. Currently always 0 — private chats are never persisted. |
+| `created_at` | TEXT | ISO datetime string when the chat was created |
+| `is_pinned` | INTEGER DEFAULT 0 | 0 = not pinned, 1 = pinned to top of sidebar |
+| `summary` | TEXT | Optional chat summary (not currently generated by the UI, available for future use) |
+| `user_id` | INTEGER | Foreign key to `users.id`. Added via ALTER TABLE migration. |
+
+---
+
+### Table: `messages`
+
+Stores one row per message in any chat.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER PRIMARY KEY AUTOINCREMENT | Auto-incremented row ID, used for ordering |
+| `chat_id` | TEXT | Foreign key to `chats.chat_id`. CASCADE DELETE: deleting a chat deletes its messages. |
+| `role` | TEXT | Either `"user"` or `"assistant"` |
+| `content` | TEXT | The full text of the message |
+| `timestamp` | TEXT | ISO datetime string when the message was saved |
+
+---
+
+### Relationships
+
+```
+users (1) ──── (many) chats
+chats (1) ──── (many) messages
+```
+
+A user can have many chats. Each chat has many messages. Messages belong to exactly one chat. Deleting a chat (via `ON DELETE CASCADE`) automatically deletes all its messages.
+
+---
+
+## 7. API Endpoints — Complete Reference
+
+All API endpoints return JSON. All endpoints except auth endpoints require a valid session (set by `login_required`). All 401 responses include `{"error": "Unauthorized", "redirect": "/login"}`.
+
+---
+
+### Authentication Endpoints
+
+---
+
+**`POST /api/auth/register`**  
+**Purpose:** Create a new user account and send OTP.  
+**Request body:** `{ "name": "Alice", "email": "alice@example.com", "password": "secret123" }`  
+**Internal steps:**
+1. Validates name (≥2 chars), email (regex), password (≥8 chars, contains digit)
+2. Checks if email already exists and is verified → reject with error
+3. If email exists unverified → refreshes OTP, resends
+4. If new: hashes password, creates user row, generates OTP, sends OTP email in background thread
+5. Returns success message
+
+**Success response:** `{ "success": true, "message": "OTP sent to your email." }`  
+**Handled by:** `routes/auth.py` — `register()`
+
+---
+
+**`POST /api/auth/verify-otp`**  
+**Purpose:** Verify the 6-digit OTP and activate the account.  
+**Request body:** `{ "email": "alice@example.com", "otp": "482931" }`  
+**Internal steps:**
+1. Looks up user by email
+2. Checks attempt count (≥5 → delete account, error)
+3. Checks OTP expiry (expired → error, no attempt penalty)
+4. Checks OTP value (wrong → increment attempts, error with remaining count)
+5. Correct OTP: marks user verified, creates Flask session, sends welcome email in background
+6. Returns success
+
+**Success response:** `{ "success": true, "message": "Email verified — welcome!" }`  
+**Handled by:** `routes/auth.py` — `verify_otp()`
+
+---
+
+**`POST /api/auth/resend-otp`**  
+**Purpose:** Generate a new OTP and send it (resets attempt counter).  
+**Request body:** `{ "email": "alice@example.com" }`  
+**Success response:** `{ "success": true, "message": "New OTP sent." }`  
+**Handled by:** `routes/auth.py` — `resend_otp()`
+
+---
+
+**`POST /api/auth/login`**  
+**Purpose:** Authenticate an existing verified user.  
+**Request body:** `{ "email": "alice@example.com", "password": "secret123" }`  
+**Internal steps:**
+1. Looks up user by email
+2. Checks `check_password_hash(stored_hash, provided_password)`
+3. If unverified → returns 401 with `error: "not_verified"` code
+4. If wrong password → returns 401 with generic "Invalid email or password" (doesn't reveal if email exists)
+5. Creates Flask session: `session["user_id"]`, `session["user_email"]`, `session["user_name"]`
+
+**Success response:** `{ "success": true, "user": {"id": 1, "name": "Alice", "email": "alice@example.com"} }`  
+**Handled by:** `routes/auth.py` — `login()`
+
+---
+
+**`POST /api/auth/logout`**  
+**Purpose:** Clear the session and log out.  
+**Request body:** (none)  
+**Success response:** `{ "success": true }`  
+**Handled by:** `routes/auth.py` — `logout()`
+
+---
+
+**`POST /api/auth/forgot-password`**  
+**Purpose:** Request a password reset email.  
+**Request body:** `{ "email": "alice@example.com" }`  
+**Internal steps:**
+1. Always returns success (prevents email enumeration)
+2. If email is valid and account exists and is verified: generates `secrets.token_urlsafe(32)`, stores it with 15-min expiry, sends reset email with link `{BASE_URL}/reset-password?token=...`
+
+**Success response:** `{ "success": true, "message": "If that email is registered, a reset link has been sent." }`  
+**Handled by:** `routes/auth.py` — `forgot_password()`
+
+---
+
+**`POST /api/auth/reset-password`**  
+**Purpose:** Set a new password using the reset token from email.  
+**Request body:** `{ "token": "abc123...", "password": "newpassword1" }`  
+**Internal steps:**
+1. Looks up user by reset token
+2. Checks token expiry (15 minutes)
+3. Validates new password (≥8 chars, contains digit)
+4. Updates password hash, clears reset token
+
+**Success response:** `{ "success": true, "message": "Password reset successfully." }`  
+**Handled by:** `routes/auth.py` — `reset_password()`
+
+---
+
+**`GET /api/auth/me`**  
+**Purpose:** Check if the current session is valid; returns user info.  
+**Request body:** (none)  
+**Success response:** `{ "success": true, "user": {"id": 1, "name": "Alice", "email": "..."} }`  
+**401 response:** `{ "error": "Unauthorized" }`  
+**Handled by:** `routes/auth.py` — `me()`
+
+---
+
+**`GET /api/auth/profile`** *(requires login)*  
+**Purpose:** Get full profile information for the profile page.  
+**Success response:** `{ "success": true, "name": "Alice", "email": "...", "created_at": "...", "chat_count": 12, "is_verified": true }`  
+**Handled by:** `routes/auth.py` — `get_profile()`
+
+---
+
+**`PUT /api/auth/profile`** *(requires login)*  
+**Purpose:** Update the user's display name.  
+**Request body:** `{ "name": "Alice B." }`  
+**Handled by:** `routes/auth.py` — `update_profile()`
+
+---
+
+**`PUT /api/auth/change-password`** *(requires login)*  
+**Purpose:** Change password from the profile page (requires knowing current password).  
+**Request body:** `{ "current_password": "old1234", "new_password": "new5678" }`  
+**Handled by:** `routes/auth.py` — `change_password()`
+
+---
+
+**`DELETE /api/auth/account`** *(requires login)*  
+**Purpose:** Permanently delete account and all associated chats/messages.  
+**Internal steps:** Deletes all messages for user's chats, deletes user's chats, deletes user row, clears session.  
+**Handled by:** `routes/auth.py` — `delete_account()`
+
+---
+
+### Chat Endpoints
+
+---
+
+**`POST /api/chat`** *(requires login)*  
+**Purpose:** Send a message and receive a streaming AI response.  
+**Request body:**
+```json
+{
+  "message": "What are black holes?",
+  "model": "llama3.1:8b",
+  "session_id": "uuid-of-chat",
+  "is_private": false,
+  "temperature": 0.7,
+  "memory_enabled": true
+}
+```
+**Response:** `text/event-stream` (SSE). Multiple events:
+- `data: {"text": "Black"}` — token by token
+- `data: {"metadata": {"sources": ["research.pdf"], "confidence": 82.5}}` — after response, if RAG was used
+- `data: {"title": "What are black holes?..."}` — after response, if chat was auto-titled  
+**Handled by:** `routes/chat.py` — `api_chat()`
+
+---
+
+**`GET /api/chats`** *(requires login)*  
+**Purpose:** Get all non-private chats for the sidebar.  
+**Response:** `{ "chats": [{"chat_id": "...", "title": "...", "is_pinned": false, ...}, ...] }`  
+**Handled by:** `routes/sessions.py` — `get_normal_chats()`
+
+---
+
+**`POST /api/chat/new`** *(requires login)*  
+**Purpose:** Create a new empty chat session.  
+**Request body:** `{ "title": "New Chat" }` (optional)  
+**Response:** `{ "chat_id": "uuid", "title": "New Chat" }`  
+**Handled by:** `routes/sessions.py` — `create_chat()`
+
+---
+
+**`GET /api/chat/<chat_id>`** *(requires login)*  
+**Purpose:** Load a specific chat with full message history.  
+**Response:** `{ "chat": {"chat_id": "...", "title": "...", "messages": [{"role": "user", "content": "..."}, ...]} }`  
+**Handled by:** `routes/sessions.py` — `get_chat()`
+
+---
+
+**`PUT /api/chat/<chat_id>`** *(requires login)*  
+**Purpose:** Rename a chat.  
+**Request body:** `{ "title": "My Chat about Black Holes" }`  
+**Handled by:** `routes/sessions.py` — `rename_chat()`
+
+---
+
+**`DELETE /api/chat/<chat_id>`** *(requires login)*  
+**Purpose:** Delete a chat and its FAISS session data.  
+**Handled by:** `routes/sessions.py` — `delete_chat()`
+
+---
+
+**`PUT /api/chat/<chat_id>/pin`** *(requires login)*  
+**Purpose:** Toggle pin/unpin a chat.  
+**Response:** `{ "success": true, "is_pinned": true }`  
+**Handled by:** `routes/sessions.py` — `toggle_pin()`
+
+---
+
+**`GET /api/chats/search`** *(requires login)*  
+**Purpose:** Search all chats by title or message content.  
+**Query param:** `?q=black+holes`  
+**Response:** `{ "results": [{chat objects}] }`  
+**Handled by:** `routes/sessions.py` — `search_chats()`
+
+---
+
+**`GET /api/chat/<chat_id>/export`** *(requires login)*  
+**Purpose:** Download chat as TXT or PDF.  
+**Query param:** `?format=txt` or `?format=pdf`  
+**Response:** File download (`text/plain` or `application/pdf`)  
+**Handled by:** `routes/sessions.py` — `export_chat()`
+
+---
+
+**`POST /api/upload`** *(requires login)*  
+**Purpose:** Upload a document (PDF/DOCX/TXT) for RAG indexing.  
+**Request body:** `multipart/form-data` with a `file` field  
+**Response:** `{ "success": true, "message": "file.pdf uploaded and indexed successfully", "filename": "file.pdf", "size_mb": 1.2 }`  
+**Handled by:** `routes/upload.py` — `upload_file()`
+
+---
+
+## 8. Authentication System — Full Explanation
+
+### How registration works step by step
+
+1. User fills in name, email, password, confirm password on `/signup`
+2. JavaScript validates passwords match, then calls `POST /api/auth/register`
+3. Server validates: name ≥ 2 chars, valid email regex, password ≥ 8 chars with digit
+4. Server checks database: if email exists and is verified → "account already exists"
+5. If email exists unverified → refreshes OTP, resends (allows retry without re-registering)
+6. New user: `generate_password_hash(password)` creates the hash, `create_user()` inserts to DB
+7. `_new_otp()` = `str(secrets.randbelow(900000) + 100000)` creates a 6-digit number
+8. OTP stored with `datetime.now() + timedelta(minutes=10)` expiry
+9. `_send_async(send_otp_email, ...)` starts a daemon thread to send email without blocking
+10. Page transitions to OTP input panel
+
+### What is OTP and why we use it
+
+OTP = One-Time Password. It is a code that can only be used once and expires after a short time. We use it to verify that the user actually controls the email address they provided. Without OTP verification, anyone could create accounts with fake emails or other people's emails.
+
+### How OTP is generated and stored
+
+```python
+def _new_otp():
+    return str(secrets.randbelow(900000) + 100000)   # 6-digit
+```
+
+`secrets.randbelow(900000)` generates a cryptographically secure random number from 0 to 899999. Adding 100000 ensures it is always 6 digits (100000 to 999999). `secrets` is used instead of `random` because `random` is predictable — it uses a seeded pseudo-random generator. `secrets` uses the operating system's entropy source.
+
+The OTP and its expiry datetime are stored in the `users` table columns `otp` and `otp_expiry`.
+
+### How email verification works
+
+When the user submits the OTP:
+1. Server looks up user by email
+2. Checks `otp_attempts` — if ≥ 5, deletes the account and returns error
+3. Checks `otp_expiry` — if expired, returns error (no attempt penalty, as expiry is outside the user's control)
+4. Checks if submitted OTP matches stored OTP
+5. Wrong: increments `otp_attempts`, returns error with remaining attempts count
+6. Correct: calls `verify_user_email()` which sets `is_verified=1`, clears OTP fields, and resets attempts
+7. Sets Flask session keys: `user_id`, `user_email`, `user_name`
+8. Sends welcome email in background thread
+
+### How login works
+
+1. User submits email + password to `POST /api/auth/login`
+2. Server fetches user by email from DB
+3. `check_password_hash(stored_hash, provided_password)` — if wrong, returns generic "Invalid email or password" (doesn't reveal if email exists, preventing enumeration)
+4. If user exists but `is_verified=0` → returns 401 with `error: "not_verified"` code (JS shows "Verify my email instead" button)
+5. If verified and password matches → creates session, returns user object
+
+### What is a session and how Flask sessions work
+
+A session is a way to remember who a user is across multiple requests. HTTP is stateless — each request is independent with no memory of previous requests. Sessions solve this.
+
+Flask's session uses a **signed cookie**. When you log in:
+1. Flask stores data in `session["user_id"] = 1` etc.
+2. This data is serialized, signed with `SECRET_KEY` using HMAC, and stored in a cookie sent to the browser
+3. On every subsequent request, the browser sends back this cookie
+4. Flask verifies the HMAC signature (proving the cookie wasn't tampered with), then reads the data
+5. The data in `session` is then available to all route handlers
+
+In QUOKKA, the session is also backed by `sessions.db` for persistence across server restarts.
+
+### How password hashing works
+
+Werkzeug's `generate_password_hash()` uses **scrypt** by default — a memory-hard key derivation function. It:
+1. Generates a random salt (adds uniqueness so two identical passwords produce different hashes)
+2. Runs many iterations of a computationally expensive hash function
+3. Returns a string containing the algorithm name, parameters, salt, and hash: `scrypt:32768:8:1$salt$hash`
+
+This means: even if the database is compromised, cracking the passwords would take billions of computer-years.
+
+### How forgot password flow works
+
+1. User enters email on `/forgot-password`, calls `POST /api/auth/forgot-password`
+2. Server **always returns success** (even if email doesn't exist) — prevents attackers from finding out which emails are registered
+3. Internally: if email is valid, verified, and exists → generates `secrets.token_urlsafe(32)` (a 43-character URL-safe random string like `abc123XYZ...`)
+4. Stores token + expiry (15 minutes) in user row
+5. Sends email with link: `{BASE_URL}/reset-password?token=abc123XYZ...`
+
+### How reset token is generated and validated
+
+`secrets.token_urlsafe(32)` creates 32 bytes of random data encoded as URL-safe base64 (letters, digits, `-`, `_`). It is statistically impossible to guess (2^256 possibilities).
+
+On the reset page:
+1. JavaScript reads `?token=...` from the URL
+2. User enters new password
+3. `POST /api/auth/reset-password` with token + new password
+4. Server: `get_user_by_reset_token(token)` — SELECT WHERE reset_token = ?
+5. Checks expiry — if expired, error
+6. Updates `password_hash`, clears `reset_token` and `reset_token_expiry`
+
+### What `login_required` decorator does
 
 ```python
 def login_required(f):
@@ -275,1230 +1353,69 @@ def login_required(f):
     return decorated
 ```
 
----
-
-#### `routes/chat.py`
-
-**What it is:** The most important backend file — the endpoint that powers every conversation.
-
-**What it does:** Handles `POST /api/chat`. When a message arrives:
-1. Validates message length (max 4,000 characters)
-2. Forces `memory_enabled = False` if private mode is on
-3. If documents exist and mode is not private, runs FAISS similarity search via `document_store.py`
-4. Filters retrieved chunks by similarity threshold (cosine similarity > 0.55)
-5. Calculates a confidence percentage for the match quality
-6. Loads the last 6 messages from chat history for conversation context
-7. Constructs a structured prompt
-8. Streams the response from Groq API using a Python generator
-9. After streaming, saves the messages to SQLite (unless private)
-10. Auto-generates a chat title from the first message if the title is still "New Chat"
-
-**Talks to:** `models/model_router.py`, `memory/document_store.py`, `memory/chat_storage.py`, `routes/auth_middleware.py`
-
-**Why needed:** This file is the engine of the entire product. Remove it and the chat feature stops working completely.
-
----
-
-#### `routes/sessions.py`
-
-**What it is:** Manages everything related to saving, loading, and organizing chat sessions.
-
-**What it does:** Defines 8 endpoints:
-- `GET /api/chats` — return all saved (non-private) chats, ordered by pin status then date
-- `POST /api/chat/new` — create a new chat in SQLite, return the new `chat_id`
-- `GET /api/chat/<id>` — return a full chat with all its messages
-- `PUT /api/chat/<id>` — rename a chat
-- `DELETE /api/chat/<id>` — delete chat from SQLite and FAISS
-- `PUT /api/chat/<id>/pin` — toggle pin status
-- `GET /api/chats/search` — search chat titles and message content
-- `GET /api/chat/<id>/export` — export as TXT or PDF using `fpdf2`
-
-**Talks to:** `memory/chat_storage.py`, `memory/faiss_store.py`
-
-**Why needed:** Without this, users can't manage, review, or download their conversations.
-
----
-
-#### `routes/upload.py`
-
-**What it is:** Handles file upload and triggers document intelligence.
-
-**What it does:**
-1. Accepts `POST /api/upload` with a file in `multipart/form-data`
-2. Validates file type (only `.pdf`, `.docx`, `.txt` allowed)
-3. Saves file to `uploads/` directory using `werkzeug.utils.secure_filename`
-4. Extracts the first 2,500 characters and calls `ask_llm_json()` to get a summary, topics, and questions from the AI
-5. Spawns a background `threading.Thread` to process the full document into FAISS
-6. Returns the AI-generated insights immediately so the user doesn't have to wait for indexing
-
-**Talks to:** `memory/document_store.py`, `models/model_router.py`
-
-**Why needed:** This is the entry point for the entire RAG feature. Without it, document search doesn't exist.
-
----
-
-#### `memory/chat_storage.py`
-
-**What it is:** The database access layer — every read and write to SQLite goes through this file.
-
-**What it does:**
-- Defines all SQLite table creation (chats, messages, users) via `init_storage()` which runs on import
-- Handles migration from an old legacy JSON format to SQLite automatically
-- Provides pure functions for every database operation: `create_user`, `get_user_by_email`, `verify_user_email`, `set_user_otp`, `create_chat`, `append_message`, `get_chat`, `delete_chat`, `toggle_pin_chat`, `search_chats`, `update_user_name`, `get_user_chat_count`, `delete_user_account`, etc.
-- Uses `sqlite3.Row` factory so rows behave like dictionaries
-- Enables WAL (Write-Ahead Logging) journal mode for better concurrent access performance
-
-**Talks to:** Nothing — it is the lowest layer. All other modules call it.
-
-**Why needed:** Every piece of persistent user data flows through this file. Remove it and all storage breaks.
-
----
-
-#### `memory/document_store.py`
-
-**What it is:** The RAG engine — handles document ingestion, chunking, embedding, FAISS indexing, and retrieval.
-
-**What it does:**
-- `extract_text(file_path)`: Reads text from `.txt`, `.pdf` (using `pypdf`), or `.docx` (using `python-docx`)
-- `chunk_text(text)`: Splits text into ~400-word chunks, paragraph-aware, with sentence-level fallback for very long paragraphs
-- `process_file(file_path, filename)`: Orchestrates the full pipeline: extract → chunk → embed → add to FAISS → save to disk
-- `retrieve_context(query, top_k=5)`: Converts query to a vector, searches FAISS for nearest neighbors, returns matching text chunks with their L2 distance scores
-- `has_documents()`: Quick check (without loading the model) of whether any documents have been indexed
-- `save()`: Persists the FAISS index and chunk/source arrays to disk as `.faiss`, `.npy` files
-
-**Talks to:** `models/embedding_manager.py` (for the SentenceTransformer model), `faiss` library
-
-**Why needed:** This is the brain of document search. Without it, uploaded files have no effect on AI answers.
-
----
-
-#### `memory/faiss_store.py`
-
-**What it is:** A per-session vector memory store — currently **reserved for future use** and not active in the main chat pipeline.
-
-**What it does:** Implements the same FAISS pattern as `document_store.py` but keyed by `session_id`. The idea is to store all messages from a chat session as vectors, enabling semantic search over conversation history ("find what was said about X 20 messages ago") instead of just the recent 6 messages.
-
-The file's own comment says:
-> "NOTE: FaissStore is NOT currently wired into the active request pipeline."
-
-The only place it's used currently is in `routes/sessions.py` where `delete_session()` is called when a chat is deleted — to clean up any FAISS files that might exist for that session.
-
-**Talks to:** `models/embedding_manager.py`
-
-**Why needed for now:** Provides clean-up functionality when chats are deleted. Future: will enable long-term semantic memory.
-
----
-
-#### `memory/pinecone_store.py`
-
-**What it is:** A stub (placeholder) file for a future Pinecone cloud vector database integration.
-
-**What it does:** Contains an empty `PineconeStore` class with `TODO` comments explaining what each method should eventually do. All methods are no-ops that return empty strings. It is **never imported by any active code**.
-
-**Talks to:** Nothing (currently unused)
-
-**Why needed:** Serves as a design document for a future cloud-scale vector memory feature. Can be deleted without affecting anything.
-
----
-
-#### `models/model_router.py`
-
-**What it is:** The Groq API client — handles all communication with the AI.
-
-**What it does:**
-- Defines `GROQ_MODEL_MAP`: a dictionary that maps internal model names (used by the frontend) to Groq's actual model IDs
-- `ask_llm_stream(prompt, model, temperature)`: Makes an HTTP POST to Groq's `/openai/v1/chat/completions` with `"stream": True`. Reads the response line by line and yields each SSE chunk as `data: {"text": "..."}` — compatible with the frontend's stream reader
-- `ask_llm_json(prompt, model, temperature)`: Same request but with `"stream": False`. Returns the parsed JSON object from the AI's response. Used by `upload.py` to get document insights
-
-```python
-GROQ_MODEL_MAP = {
-    "llama3.1:8b":      "llama-3.1-8b-instant",
-    "llama3.1:70b":     "llama3-70b-8192",
-    "mistral:latest":   "mixtral-8x7b-32768",
-    "phi:latest":       "gemma2-9b-it",
-    "tinyllama:latest": "gemma2-9b-it",
-}
-```
-
-**Talks to:** Groq's external API over HTTPS using `requests`
-
-**Why needed:** All AI responses come through this file. Remove it and the app is just a chat UI with no AI.
-
----
-
-#### `models/embedding_manager.py`
-
-**What it is:** A thread-safe singleton manager for the SentenceTransformer embedding model.
-
-**What it does:**
-- Uses a class-level lock (`threading.Lock`) to ensure the model is only loaded once, even if multiple threads call `get_model()` at the same time
-- Downloads and caches the `BAAI/bge-small-en-v1.5` model from HuggingFace on first call
-- Returns the same model instance on all subsequent calls (singleton pattern)
-
-**Talks to:** `sentence_transformers` library
-
-**Why needed:** The embedding model takes several seconds to load. Loading it once and reusing it prevents lag on every document search request.
-
----
-
-#### `services/__init__.py`
-
-**What it is:** An empty file that marks the `services/` directory as a Python package.
-
-**What it does:** Nothing. Its presence tells Python: "treat this folder as a module."
-
-**Why needed:** Without this file, `from services.mail_service import ...` would fail with an import error.
-
----
-
-#### `services/mail_service.py`
-
-**What it is:** The email sending module.
-
-**What it does:**
-- `_base_wrapper(body_content)`: Creates a consistent dark-themed HTML email template with the QUOKKA branding
-- `_send_html(subject, recipients, html_body)`: Gets the Flask-Mail extension from the current app context and sends the email
-- `send_otp_email(email, name, otp)`: Sends a verification email with the 6-digit OTP displayed in large yellow text
-- `send_reset_email(email, name, reset_link)`: Sends a password reset email with a styled button linking to the reset page
-- `send_welcome_email(email, name)`: Sends a welcome confirmation after successful email verification
-
-**Talks to:** Flask-Mail extension (configured in `app.py`), Gmail SMTP server
-
-**Why needed:** Email-based OTP verification and password reset are core security features. Without this, users can't register or recover their accounts.
-
----
-
-#### `templates/index.html`
-
-**What it is:** The main chat interface — the page users spend most of their time on.
-
-**What it does:**
-- Contains the two-column layout: a sidebar (chat list, search, user info) and a main content area (chat messages, input box, header with controls)
-- Includes the model selector dropdown with four models
-- Has the private chat toggle, TXT/PDF export buttons, and settings gear icon
-- Contains the settings modal with temperature slider and memory toggle
-- References `marked.min.js` (from CDN) for Markdown rendering and `app.js` for all logic
-- Uses Phosphor Icons (from CDN) for the icon system
-
-**Talks to:** Served by `app.py`, logic driven by `static/js/app.js`
-
----
-
-#### `templates/login.html`
-
-**What it is:** The login page.
-
-**What it does:**
-- Presents email and password fields
-- Handles the case where the user is unverified: shows a "Resend OTP" button and an OTP entry panel inline (six individual digit boxes)
-- Contains inline JavaScript that calls the `postJson`, `showError`, `hideError`, `setupOTPInputs` functions from `auth.js`
-- On successful login, redirects to `/`
-
----
-
-#### `templates/signup.html`
-
-**What it is:** The registration page.
-
-**What it does:**
-- Shows name, email, password, and confirm-password fields
-- Has a live password strength bar (Weak / Medium / Strong) that updates as the user types
-- On successful API call, hides the form and shows the 6-box OTP entry panel
-- Has a countdown timer on the Resend OTP button (60 seconds)
-
----
-
-#### `templates/forgot_password.html`
-
-**What it is:** The "forgot password" page.
-
-**What it does:**
-- Simple form with an email input
-- Calls `POST /api/auth/forgot-password` — which always responds with success (to prevent email enumeration)
-- On success, hides the form and shows "Reset link sent! Check your inbox."
-
----
-
-#### `templates/reset_password.html`
-
-**What it is:** The page users land on after clicking the reset link in their email.
-
-**What it does:**
-- Reads the `?token=...` parameter from the URL
-- If no token is present, immediately shows an error
-- Shows new password and confirm password fields with a strength bar
-- Calls `POST /api/auth/reset-password` with the token and new password
-- On success, shows a confirmation message and redirects to login after 2 seconds
-
----
-
-#### `templates/profile.html`
-
-**What it is:** The user profile management page, the most complex HTML template in the project.
-
-**What it does:**
-- Loads the user's profile data from `GET /api/auth/profile` on page load
-- **Section 1:** Displays avatar (first letter of name), full name, email, and join date
-- **Section 2:** Edit display name form — calls `PUT /api/auth/profile`
-- **Section 3:** Change password form with strength bar — calls `PUT /api/auth/change-password`
-- **Section 4:** Account stats grid — total chats, member since date, account status (Verified ✓)
-- **Section 5:** Danger Zone — "Delete Account" button triggers a confirmation modal; calls `DELETE /api/auth/account` then redirects to login
-- Includes all its own CSS inline in a `<style>` block (does not use `auth.css` for most styles)
-
----
-
-#### `static/js/app.js`
-
-**What it is:** The entire frontend brain for the main chat page. The largest single file in the project (619 lines).
-
-**What it does:** (Detailed explanation in Section 11)
-
----
-
-#### `static/js/auth.js`
-
-**What it is:** A shared utility library for all auth pages.
-
-**What it does:** (Detailed explanation in Section 11)
-
----
-
-#### `static/css/styles.css`
-
-**What it is:** The main stylesheet for the chat UI (`index.html` and `profile.html`).
-
-**What it does:** Defines the dark-mode design system — layout (`app-container`, `sidebar`, `main-content`), chat message bubbles, the input box, the settings modal, the sidebar chat list items with pin/rename/delete actions, the private mode warning banner, the metadata block shown when RAG sources are found, and responsive styles.
-
----
-
-#### `static/css/auth.css`
-
-**What it is:** The stylesheet for all authentication pages (login, signup, forgot password, reset password).
-
-**What it does:** Styles the card-based centered layout, the branded QUOKKA header, input fields, the OTP digit boxes, buttons, the password strength bar, and spinner animations.
-
----
-
-## 4. Technology Stack — Deep Explanation
-
-### Flask
-
-**What is Flask?**  
-Flask is a Python **web framework** — a set of tools that makes it easy to build a web server. It handles incoming HTTP requests (when someone visits a URL or submits a form) and generates responses (HTML pages, JSON data, files).
-
-**Why Flask instead of Django or FastAPI?**
-- **Django** is a "batteries-included" framework — it has its own ORM, admin panel, and many built-in features. For a project this size, Django would add unnecessary complexity.
-- **FastAPI** is optimized for building pure API backends. QUOKKA also needs to serve HTML pages (templates), where Flask's Jinja2 templating is a better fit.
-- **Flask** was chosen because it's lightweight, has a minimal learning curve, and gives full control over every component. Its Blueprint system makes it easy to organize routes into separate files.
-
-**What does Flask do in this project specifically?**
-- Routes every URL to the right Python function
-- Manages user sessions via encrypted cookies
-- Serves HTML templates via Jinja2
-- Integrates with Flask-Mail for email sending
-- Provides `Response` with `stream_with_context` for SSE streaming
-
-**Which files use Flask:** `app.py`, `routes/auth.py`, `routes/chat.py`, `routes/sessions.py`, `routes/upload.py`, `routes/auth_middleware.py`, `services/mail_service.py`
-
----
-
-### Groq API
-
-**What is an API?**  
-An API (Application Programming Interface) is a way for two programs to talk to each other over the internet. In this case, our server sends an HTTP request to Groq's server saying "generate a response to this prompt," and Groq's server sends back the AI's response.
-
-**What is Groq?**  
-Groq is a company that built specialized AI inference hardware (Language Processing Units, or LPUs) that can run large language models **much faster** than regular GPUs. They offer a free API to run popular open-source models like LLaMA. For QUOKKA, this means near-instant AI responses at zero cost.
-
-**What is LLaMA 3.1 8B and LLaMA 3 70B?**  
-LLaMA (Large Language Model Meta AI) is a family of AI language models released by Meta (Facebook). The number after it (8B, 70B) refers to the number of **parameters** in the model.
-
-**What are parameters?**  
-Imagine the AI model as a giant network of mathematical relationships — billions of knobs and dials. Each knob is a "parameter." When the model was trained, each knob was set to a specific value by learning from trillions of words of text. More parameters generally means a smarter, more nuanced model, but also more computation needed.
-- **8B = 8 Billion parameters** — fast, good quality, runs in seconds
-- **70B = 70 Billion parameters** — slower, significantly smarter, better reasoning
-
-**How did we connect to Groq API?**  
-In `models/model_router.py`, we make a standard HTTPS POST request:
-
-```python
-response = requests.post(
-    "https://api.groq.com/openai/v1/chat/completions",
-    headers={
-        "Authorization": f"Bearer {GROQ_API_KEY}",  # proves we have access
-        "Content-Type": "application/json"           # tells Groq we're sending JSON
-    },
-    json={
-        "model": "llama-3.1-8b-instant",  # which model to use
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7,       # creativity level (0=deterministic, 1=creative)
-        "max_tokens": 512,        # max length of response
-        "stream": True            # send tokens as they're generated, not all at once
-    },
-    stream=True   # keep the HTTP connection open for streaming
-)
-```
-
-**What does the response look like?**  
-When streaming, Groq sends a continuous stream of lines. Each line looks like:
-```
-data: {"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]}
-data: {"choices":[{"delta":{"content":" world"},"finish_reason":null}]}
-data: [DONE]
-```
-
-We extract the `content` field from each line and forward it to the browser.
-
-**What is streaming and why do we use it?**  
-Without streaming, the user would stare at a blank screen for 5–10 seconds while the model generates the full response, then see it all at once. With streaming, tokens appear one by one starting within milliseconds, which feels natural and responsive.
-
-**Where in the code does this happen?**  
-`models/model_router.py` — functions `ask_llm_stream()` and `ask_llm_json()`
-
----
-
-### FAISS
-
-**What is FAISS?**  
-FAISS (Facebook AI Similarity Search) is a library built by Meta for **very fast vector similarity search**. Think of it as a special-purpose database optimized for one thing: "find the N most similar items to this one."
-
-**What is a vector?**  
-A vector is a list of numbers. For example, `[0.12, -0.45, 0.88, ...]`. In the context of AI, text is converted into vectors where similar meanings produce similar numbers. The sentence "What is machine learning?" and "Explain artificial intelligence" would produce vectors that are mathematically close to each other.
-
-**What is vector search?**  
-Traditional text search looks for exact keyword matches. Vector search looks for *conceptual similarity*. "How do I bake bread?" would match a chunk about "kneading dough" even if the word "bake" never appears in that chunk.
-
-**Why do we need it for document search?**  
-When a user asks "explain the conclusion of this paper," we need to find the relevant paragraphs from a 50-page PDF. Keyword search would fail if different words were used. Vector search finds the semantically similar chunks regardless of exact wording.
-
-**How does it work in this project?**
-1. Each document chunk is converted to a 384-dimensional vector (a list of 384 numbers)
-2. All vectors are stored in a FAISS `IndexFlatL2` index (flat L2 = exact search using Euclidean distance)
-3. When a query comes in, it's also converted to a 384-dimensional vector
-4. FAISS finds the `top_k` stored vectors closest to the query vector in 384-dimensional space
-5. The corresponding text chunks are returned as context
-
-**Which files use it:** `memory/document_store.py`, `memory/faiss_store.py`
-
----
-
-### Sentence Transformers (BAAI/bge-small-en-v1.5)
-
-**What is an embedding model?**  
-An embedding model is a neural network that converts text into vectors (lists of numbers). Unlike language models that generate text, embedding models just *understand* text and express that understanding as a point in mathematical space.
-
-**What does BAAI/bge-small-en-v1.5 do?**  
-It converts any piece of text into a 384-dimensional vector. BAAI stands for Beijing Academy of Artificial Intelligence, and "bge" stands for "BAAI General Embedding." The `small` variant uses only 33 million parameters — it's fast to run and produces excellent quality embeddings for semantic search.
-
-**Why this model specifically?**
-- **384 dimensions** — small enough to store millions of chunks without using too much RAM or disk
-- **High quality** — consistently ranks near the top of benchmarks for sentence similarity tasks
-- **Fast** — can embed thousands of chunks in seconds on a CPU
-- **Open and free** — no API key required, downloaded from HuggingFace on first use
-
-**Where is it used in the code:**  
-`models/embedding_manager.py` loads it. `memory/document_store.py` uses it to embed chunks and queries.
-
----
-
-### RAG (Retrieval Augmented Generation)
-
-**What is RAG?**  
-RAG stands for Retrieval Augmented Generation. It is a technique to make an AI answer questions based on specific documents that it wasn't trained on. 
-
-Think of it like an open-book exam. Without RAG, the AI only knows what it learned during training. With RAG, before answering, the AI is given relevant pages from a book to read, then generates its answer based on those pages plus its general knowledge.
-
-**Why do we need RAG?**  
-LLMs are trained on general internet data. They don't know about your specific PDF — your research paper, your company's documentation, your personal notes. RAG bridges this gap.
-
-**How does RAG work in QUOKKA step by step?**
-
-*During document upload:*
-1. Text is extracted from the file (PDF → text via `pypdf`, DOCX → text via `python-docx`, TXT → read directly)
-2. Text is split into overlapping chunks of ~400 words, respecting paragraph boundaries
-3. Each chunk is embedded by `BAAI/bge-small-en-v1.5` into a 384-float vector
-4. Vectors are added to a FAISS index and saved to disk
-
-*During a chat message:*
-1. The user's message is embedded into a 384-float vector
-2. FAISS searches for the 5 most similar chunks from all uploaded documents (top_k=5)
-3. Each match comes with an L2 distance score (lower = more similar)
-4. Chunks are filtered: only those where cosine similarity > 0.55 (55%) are kept
-5. A confidence score is calculated: `confidence = (1 - avg_distance/2) * 100`
-6. The retained chunks are joined and inserted into the prompt as "Context"
-7. The AI uses this context in its answer
-8. The frontend displays the source filenames and confidence percentage in a metadata block below the answer
-
-**What happens when you upload a PDF?**  
-Covered above — text extraction → chunking → embedding → FAISS indexing.
-
-**How does the AI use the PDF content?**  
-The relevant chunks are prepended to the prompt:
-```
-Use the provided context when relevant. If the context is insufficient, 
-answer using general knowledge...
-
-Context:
-[chunk 1 text]
-
-[chunk 2 text]
-
-Question:
-[user's message]
-
-Answer:
-```
-
----
-
-### SQLite
-
-**What is SQLite?**  
-SQLite is a **file-based relational database**. Unlike PostgreSQL or MySQL which run as a separate server process, SQLite is embedded directly into the application — the entire database is a single `.db` file on disk.
-
-**What tables exist in the database?**  
-Three tables: `chats`, `messages`, and `users`. (See Section 6 for complete schema.)
-
-**Why SQLite and not PostgreSQL or MySQL?**
-- **Zero configuration** — no database server to install, configure, or maintain
-- **Perfect for small-to-medium user bases** — handles thousands of concurrent reads well, and WAL mode improves write concurrency
-- **Portable** — the entire database is a single file that can be copied, backed up, or moved trivially
-- **Free and built into Python** — the `sqlite3` module is in Python's standard library, no extra installation needed
-
-The main trade-off: SQLite does not handle many simultaneous *writes* as gracefully as PostgreSQL. For a small deployment, this is not a problem.
-
----
-
-### Flask-Mail
-
-**What is Flask-Mail?**  
-Flask-Mail is a Flask extension that makes it easy to send emails from a Flask application. It integrates with the Flask app configuration and provides a `Mail` object.
-
-**How does email sending work?**  
-QUOKKA uses Gmail as the SMTP (Simple Mail Transfer Protocol) server. When `mail_service.py` calls `mail.send(msg)`, Flask-Mail connects to `smtp.gmail.com` on port 587, authenticates with your Gmail credentials, and sends the email on your behalf.
-
-**What is Gmail SMTP?**  
-SMTP is the standard internet protocol for sending email between servers. Gmail provides an SMTP server that anyone with a Gmail account can use to send emails programmatically — up to 500 per day on the free tier.
-
-**What is an App Password and why is it needed?**  
-If you have 2-factor authentication (2FA) enabled on your Gmail account (which you should), Gmail won't accept your regular password from a script. An **App Password** is a special 16-character password you generate specifically for one application. It bypasses 2FA for that one app only. You get it from: Google Account → Security → 2-Step Verification → App Passwords.
-
-**What emails does QUOKKA send?**
-1. **OTP verification email** — sent on registration with the 6-digit code
-2. **Welcome email** — sent after successful email verification
-3. **Password reset email** — sent when user requests a reset link
-
----
-
-### Werkzeug
-
-**What is Werkzeug?**  
-Werkzeug is the low-level WSGI toolkit that Flask is built on. In QUOKKA, we use two specific utilities from it:
-
-1. **`werkzeug.security.generate_password_hash`** — takes a plain-text password and returns a secure hash
-2. **`werkzeug.security.check_password_hash`** — checks if a plain-text password matches a stored hash
-3. **`werkzeug.utils.secure_filename`** — sanitizes uploaded filenames (removes `../`, spaces, and special characters that could be used in path traversal attacks)
-
-**How is it used for password security?**
-
-```python
-# When user registers:
-password_hash = generate_password_hash("mypassword123")
-# Stored in DB: "pbkdf2:sha256:600000$abc123...[long hash]"
-
-# When user logs in:
-check_password_hash(stored_hash, "mypassword123")  # → True
-check_password_hash(stored_hash, "wrongpassword")  # → False
-```
-
-**What is password hashing and why is it important?**  
-Hashing is a one-way mathematical transformation. You cannot reverse a hash to get the original password. This means that even if someone steals the database, they get a list of hashes, not passwords. They would need to try billions of guesses to crack each one. Werkzeug uses PBKDF2-HMAC-SHA256 with 600,000 iterations — a deliberately slow algorithm that makes brute-force attacks computationally expensive.
-
----
-
-### FPDF2
-
-**What is FPDF2?**  
-FPDF2 (Free PDF) is a Python library for creating PDF documents from scratch in code.
-
-**How is PDF export implemented?**  
-In `routes/sessions.py`, when the export format is `pdf`:
-1. A new `FPDF()` object is created
-2. A page is added with `pdf.add_page()`
-3. The font is set to Arial 12pt
-4. The chat title is written as a centered cell
-5. For each message, the role (USER/ASSISTANT) is written in bold, then the content in regular weight using `multi_cell()` which handles word wrapping automatically
-6. The text is encoded to `latin-1` (FPDF2's default encoding) using `replace` for any characters it can't handle
-7. The PDF binary output is written to an in-memory `BytesIO` buffer
-8. Flask's `send_file()` returns it as a downloadable attachment
-
----
-
-### Gunicorn
-
-**What is Gunicorn?**  
-Gunicorn (Green Unicorn) is a production-grade Python WSGI HTTP server. It's the standard way to deploy Flask applications in production.
-
-**Why can't we use Flask's built-in server in production?**  
-Flask's development server (`app.run()`) is designed for one developer testing locally. It:
-- Can only handle one request at a time
-- Is not optimized for performance
-- Has a warning in its output: "WARNING: Do not use the development server in a production environment"
-
-**How does Gunicorn help?**  
-Gunicorn spawns multiple **worker processes** (each is a separate Python process that can handle one request). With 4 workers, 4 users can be served simultaneously. It handles all the complexity of process management, graceful restarts, and connection handling.
-
-Deploy command on Render:
-```bash
-gunicorn app:app
-```
-This tells Gunicorn to import `app.py` and run the `app` Flask object.
-
----
-
-## 5. All Dependencies Explained
-
-| Package | Purpose | Used In | If Removed |
-|---------|---------|---------|------------|
-| `flask` | Web framework — routes, templates, sessions | `app.py`, all routes | App won't start |
-| `flask-mail` | Email sending via SMTP | `app.py`, `services/mail_service.py` | No OTP emails, no password reset |
-| `flask-cors` | Cross-Origin Resource Sharing headers | `app.py` (configured at startup) | Browser may block API requests from different origins |
-| `gunicorn` | Production WSGI server | Used as the start command on Render | Cannot deploy to production |
-| `python-dotenv` | Loads `.env` file into environment | `app.py` | Env vars not loaded; API key missing |
-| `werkzeug` | Password hashing + secure file names | `routes/auth.py`, `routes/upload.py` | Passwords stored as plain text; file upload insecure |
-| `requests` | Makes HTTP calls to Groq API | `models/model_router.py` | No AI responses — entire chat feature broken |
-| `sentence-transformers` | Loads and runs the text embedding model | `models/embedding_manager.py` | Document search and RAG completely broken |
-| `faiss-cpu` | Vector similarity search | `memory/document_store.py`, `memory/faiss_store.py` | Cannot build or search document index |
-| `numpy` | Numerical array operations for FAISS vectors | `memory/document_store.py`, `memory/faiss_store.py` | FAISS cannot operate; embedding vectors have no format |
-| `pypdf` | Extract text from PDF files | `memory/document_store.py` | Cannot process uploaded PDFs |
-| `python-docx` | Extract text from DOCX files | `memory/document_store.py` | Cannot process uploaded Word documents |
-| `fpdf2` | Generate PDF files for chat export | `routes/sessions.py` | PDF export button does nothing |
-| `accelerate` | Optimizes model loading for `sentence-transformers` | Loaded automatically by `sentence-transformers` | Embedding model may fail to load or load slowly |
-
----
-
-## 6. Database Schema
-
-The SQLite database is stored at `data/chats.db`. It has three tables:
-
----
-
-### Table: `chats`
-
-Stores one row per conversation.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `chat_id` | TEXT (PRIMARY KEY) | A UUID v4 string — unique identifier for this chat |
-| `title` | TEXT | Display name shown in the sidebar (default: "New Chat", auto-set from first message) |
-| `is_private` | INTEGER | `0` = normal chat, `1` = private (never shown or queried, currently always 0 on creation) |
-| `created_at` | TEXT | ISO 8601 timestamp of when the chat was created |
-| `is_pinned` | INTEGER | `0` = not pinned, `1` = pinned (pinned chats appear at top of sidebar) |
-| `summary` | TEXT | Unused text column (reserved for future auto-summary feature) |
-| `user_id` | INTEGER | Foreign key to `users.id` — added via migration; tracks which user owns the chat |
-
----
-
-### Table: `messages`
-
-Stores every individual message within a chat.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | INTEGER (PRIMARY KEY AUTOINCREMENT) | Auto-incrementing message ID |
-| `chat_id` | TEXT | Foreign key to `chats.chat_id` — which conversation this message belongs to |
-| `role` | TEXT | Either `"user"` (human) or `"assistant"` (AI) |
-| `content` | TEXT | The full text of the message |
-| `timestamp` | TEXT | ISO 8601 timestamp of when the message was stored |
-
-**Relationship:** Each `chat_id` in `messages` must exist in `chats.chat_id`. If a chat is deleted, its messages are deleted too (handled in code with explicit DELETE statements).
-
----
-
-### Table: `users`
-
-Stores user account information.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | INTEGER (PRIMARY KEY AUTOINCREMENT) | Unique user ID — stored in Flask session after login |
-| `name` | TEXT | Display name shown in the sidebar and profile |
-| `email` | TEXT (UNIQUE) | Email address — used for login and all emails |
-| `password_hash` | TEXT | Werkzeug PBKDF2 hash of the user's password — never the plain-text password |
-| `is_verified` | INTEGER | `0` = email not verified, `1` = verified — users cannot log in until `1` |
-| `otp` | TEXT | The current 6-digit OTP code sent to the user's email |
-| `otp_expiry` | TEXT | ISO 8601 timestamp when the OTP expires (10 minutes after sending) |
-| `otp_attempts` | INTEGER | Count of how many times the user has tried an OTP — blocked at 5 attempts |
-| `reset_token` | TEXT | A random URL-safe 32-character string sent in password reset emails |
-| `reset_token_expiry` | TEXT | ISO 8601 timestamp when the reset token expires (15 minutes) |
-| `created_at` | TEXT | ISO 8601 timestamp of account creation — shown on the profile page |
-
----
-
-## 7. API Endpoints — Complete Reference
-
-### Authentication Endpoints
-
----
-
-**`POST /api/auth/register`**  
-**File:** `routes/auth.py`  
-**Request body:** `{ "name": "Alice", "email": "alice@example.com", "password": "secret123" }`  
-**What it does:**
-1. Validates name ≥ 2 chars, valid email format, password ≥ 8 chars with at least one digit
-2. Checks if email already exists and is verified → returns error
-3. If email exists but unverified → sends a fresh OTP
-4. Creates user record, hashes password, generates OTP, sends OTP email
-**Response:** `{ "success": true, "message": "OTP sent to your email" }`
-
----
-
-**`POST /api/auth/verify-otp`**  
-**File:** `routes/auth.py`  
-**Request body:** `{ "email": "alice@example.com", "otp": "123456" }`  
-**What it does:**
-1. Looks up user by email
-2. Checks attempt count (blocks at 5)
-3. Increments attempt counter
-4. Checks if OTP has expired
-5. Compares submitted OTP with stored OTP
-6. On success: marks user verified, sets Flask session, sends welcome email
-**Response:** `{ "success": true, "message": "Account verified" }`
-
----
-
-**`POST /api/auth/resend-otp`**  
-**File:** `routes/auth.py`  
-**Request body:** `{ "email": "alice@example.com" }`  
-**What it does:** Generates a new OTP with a fresh 10-minute expiry and sends a new email.  
-**Response:** `{ "success": true }`
-
----
-
-**`POST /api/auth/login`**  
-**File:** `routes/auth.py`  
-**Request body:** `{ "email": "alice@example.com", "password": "secret123" }`  
-**What it does:**
-1. Finds user by email
-2. Checks `is_verified` — returns 401 with `error: "not_verified"` if unverified
-3. Checks password hash with `check_password_hash`
-4. On success: stores `user_id`, `user_email`, `user_name` in Flask session
-**Response:** `{ "success": true, "user": {"id": 1, "name": "Alice", "email": "alice@example.com"} }`
-
----
-
-**`POST /api/auth/logout`**  
-**File:** `routes/auth.py`  
-**What it does:** Calls `session.clear()` to remove all session data.  
-**Response:** `{ "success": true }`
-
----
-
-**`POST /api/auth/forgot-password`**  
-**File:** `routes/auth.py`  
-**Request body:** `{ "email": "alice@example.com" }`  
-**What it does:** If email exists and is verified, generates a `secrets.token_urlsafe(32)` reset token with 15-minute expiry, stores it in DB, sends a reset email with a link containing the token. Always returns success (to prevent email enumeration attacks).  
-**Response:** `{ "success": true, "message": "If that email exists, a reset link has been sent" }`
-
----
-
-**`POST /api/auth/reset-password`**  
-**File:** `routes/auth.py`  
-**Request body:** `{ "token": "abc...", "password": "newpassword123" }`  
-**What it does:** Looks up user by reset token, validates expiry, validates new password strength, updates the password hash, clears the reset token.  
-**Response:** `{ "success": true, "message": "Password reset successful" }`
-
----
-
-**`GET /api/auth/me`**  
-**File:** `routes/auth.py`  
-**What it does:** Returns minimal user info if logged in. Used by `app.js` on page load to populate the sidebar username and avatar.  
-**Response:** `{ "success": true, "user": {"id": 1, "name": "Alice", "email": "alice@example.com"} }`
-
----
-
-**`GET /api/auth/profile`**  
-**File:** `routes/auth.py` — requires `@login_required`  
-**What it does:** Returns full profile info including chat count and verification status.  
-**Response:** `{ "success": true, "name": "Alice", "email": "...", "created_at": "...", "chat_count": 12, "is_verified": true }`
-
----
-
-**`PUT /api/auth/profile`**  
-**File:** `routes/auth.py` — requires `@login_required`  
-**Request body:** `{ "name": "Alice Smith" }`  
-**What it does:** Updates the user's display name in the database and in the current session.  
-**Response:** `{ "success": true, "message": "Profile updated" }`
-
----
-
-**`PUT /api/auth/change-password`**  
-**File:** `routes/auth.py` — requires `@login_required`  
-**Request body:** `{ "current_password": "old123", "new_password": "new456" }`  
-**What it does:** Verifies current password, validates new password, updates hash in DB.  
-**Response:** `{ "success": true, "message": "Password updated" }`
-
----
-
-**`DELETE /api/auth/account`**  
-**File:** `routes/auth.py` — requires `@login_required`  
-**What it does:** Deletes all messages for the user's chats, deletes the chats, deletes the user record. Clears session.  
-**Response:** `{ "success": true }`
-
----
-
-### Chat Endpoints
-
----
-
-**`POST /api/chat`**  
-**File:** `routes/chat.py` — requires `@login_required`  
-**Request body:**
-```json
-{
-  "message": "What is machine learning?",
-  "model": "llama3.1:8b",
-  "session_id": "uuid-...",
-  "is_private": false,
-  "temperature": 0.7,
-  "memory_enabled": true
-}
-```
-**What it does:** Runs RAG retrieval, builds prompt, calls Groq API, streams SSE tokens back to browser. After streaming, saves messages and updates chat title if needed.  
-**Response:** Server-Sent Events stream: `data: {"text": "Hello"}\n\n`, `data: {"metadata": {...}}\n\n`, `data: {"title": "What is machine..."}\n\n`
-
----
-
-**`GET /api/chats`**  
-**File:** `routes/sessions.py`  
-**What it does:** Returns all non-private chats ordered by `is_pinned DESC, created_at DESC`.  
-**Response:** `{ "chats": [{"chat_id": "...", "title": "...", "is_pinned": false, ...}] }`
-
----
-
-**`POST /api/chat/new`**  
-**File:** `routes/sessions.py`  
-**Request body:** `{ "title": "New Chat" }`  
-**What it does:** Inserts a new row in the `chats` table with a new UUID.  
-**Response:** `{ "chat_id": "uuid-...", "title": "New Chat" }`
-
----
-
-**`GET /api/chat/<id>`**  
-**File:** `routes/sessions.py`  
-**What it does:** Fetches the chat row and all its messages ordered by `id ASC`.  
-**Response:** `{ "chat": {"chat_id": "...", "title": "...", "messages": [{"role": "user", "content": "..."}]} }`
-
----
-
-**`PUT /api/chat/<id>`**  
-**File:** `routes/sessions.py`  
-**Request body:** `{ "title": "My Research Chat" }`  
-**What it does:** Updates the `title` field in the `chats` table.  
-**Response:** `{ "success": true, "title": "My Research Chat" }`
-
----
-
-**`DELETE /api/chat/<id>`**  
-**File:** `routes/sessions.py`  
-**What it does:** Deletes messages, then the chat from SQLite. Also calls `delete_faiss_session()` to remove any FAISS index files for that session.  
-**Response:** `{ "success": true }`
-
----
-
-**`PUT /api/chat/<id>/pin`**  
-**File:** `routes/sessions.py`  
-**What it does:** Reads current `is_pinned` value, flips it (0→1 or 1→0), writes it back.  
-**Response:** `{ "success": true, "is_pinned": true }`
-
----
-
-**`GET /api/chats/search`**  
-**File:** `routes/sessions.py`  
-**Query params:** `?q=machine+learning`  
-**What it does:** SQL query that joins `chats` and `messages`, searching for the query string in both `title` and `content` using `LIKE`.  
-**Response:** `{ "results": [{"chat_id": "...", "title": "..."}] }`
-
----
-
-**`GET /api/chat/<id>/export`**  
-**File:** `routes/sessions.py`  
-**Query params:** `?format=txt` or `?format=pdf`  
-**What it does:** Fetches the full chat and serializes it to a TXT file or builds a PDF with `fpdf2`. Returns it as a downloadable file attachment.  
-**Response:** Binary file download (`text/plain` or `application/pdf`)
-
----
-
-**`POST /api/upload`**  
-**File:** `routes/upload.py`  
-**Request body:** `multipart/form-data` with a `file` field  
-**What it does:** Saves file, generates AI insights from first 2,500 chars, starts background thread for FAISS indexing.  
-**Response:** `{ "success": true, "summary": "...", "topics": [...], "questions": [...] }`
-
----
-
-## 8. Authentication System — Full Explanation
-
-### How Registration Works Step by Step
-
-1. User fills in name, email, password, and confirm password on `/signup`
-2. The client-side JavaScript checks passwords match before submitting
-3. `POST /api/auth/register` is called
-4. Server validates:
-   - Name is at least 2 characters
-   - Email matches the regex `^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$`
-   - Password is at least 8 characters and contains at least 1 digit
-5. If email already exists and is verified → reject
-6. If email exists but unverified → resend OTP (handles the "registered but didn't verify" case)
-7. `generate_password_hash(password)` creates a secure hash
-8. `storage.create_user(name, email, password_hash)` inserts the row
-9. A 6-digit OTP is generated: `str(secrets.randbelow(900000) + 100000)` — always 6 digits (100000–999999)
-10. OTP is stored with a 10-minute expiry: `datetime.now() + timedelta(minutes=10)`
-11. `send_otp_email()` fires a formatted HTML email
-
-### What is OTP and Why We Use It
-
-OTP stands for One-Time Password. It's a short code that:
-- Proves the user has access to the email address they registered with
-- Is generated randomly (not predictable)
-- Expires quickly (10 minutes)
-- Can only be used once (verified user can't be verified again)
-
-This prevents bots from creating thousands of fake accounts and ensures every account belongs to a real person with a real email.
-
-### How OTP Is Generated and Stored
-
-```python
-otp = str(secrets.randbelow(900000) + 100000)
-expiry = (datetime.now() + timedelta(minutes=10)).isoformat()
-storage.set_user_otp(email, otp, expiry)  # writes to users table
-```
-
-`secrets.randbelow()` uses the OS's cryptographic random number generator — it cannot be predicted.
-
-### How Email Verification Works
-
-1. User submits their 6-digit code via the OTP input
-2. Server retrieves the user record
-3. Checks `otp_attempts < 5` (locked out at 5 wrong guesses)
-4. Increments `otp_attempts` counter
-5. Parses `otp_expiry` and checks it's in the future
-6. Compares submitted OTP with stored OTP (plain string comparison)
-7. On success: `storage.verify_user_email(email)` sets `is_verified = 1`, clears OTP fields
-8. Flask session is created, welcome email is sent
-
-### How Login Works
-
-1. User submits email and password
-2. `get_user_by_email(email)` retrieves the user
-3. `is_verified` must be `1` — if not, returns 401 with `error: "not_verified"` (the frontend shows the OTP resend panel)
-4. `check_password_hash(stored_hash, submitted_password)` — werkzeug computes the hash of the submitted password and compares to stored hash
-5. On success: `session["user_id"] = user["id"]` etc. is set
-
-### What is a Session and How Flask Sessions Work
-
-A Flask session is a server-side mechanism that "remembers" who a user is across multiple HTTP requests. HTTP is stateless — each request is independent. Sessions solve this.
-
-Flask stores session data as an **encrypted, signed cookie** in the user's browser. The cookie contains `session_id` → user data mapping. The `SECRET_KEY` in `.env` is used to sign and encrypt this cookie, so it cannot be tampered with.
-
-When a request arrives, Flask decrypts the cookie and makes `session["user_id"]` available. The `@login_required` decorator reads this to verify the user is logged in.
-
-### How Password Hashing Works
-
-```
-User types:  "mypassword123"
-             ↓
-werkzeug generates a random "salt" (extra random data)
-             ↓
-Runs PBKDF2-HMAC-SHA256 with 600,000 iterations
-             ↓
-Stored: "pbkdf2:sha256:600000$abc123xyz...[64 hex chars]"
-```
-
-The hash is **irreversible** — there's no algorithm to go from hash back to password. To verify a login, werkzeug re-runs the same algorithm with the submitted password and the stored salt, then compares outputs.
-
-### How Forgot Password Flow Works
-
-1. User submits their email on `/forgot-password`
-2. Server checks if email exists and is verified
-3. If yes: `secrets.token_urlsafe(32)` generates a 43-character random URL-safe token (e.g., `abc123Xyz...`)
-4. Token is stored in `reset_token` column with a 15-minute expiry in `reset_token_expiry`
-5. A reset link is constructed: `{BASE_URL}/reset-password?token={token}`
-6. `send_reset_email()` sends a styled HTML email with a button linking to this URL
-7. Server **always** returns success (prevents attackers from testing which emails are registered)
-
-On the reset page:
-1. The token is read from `window.location.search` in JavaScript
-2. User enters new password twice
-3. `POST /api/auth/reset-password` is called with `{ token, password }`
-4. Server looks up user by token, validates expiry, validates password strength
-5. Updates `password_hash`, clears `reset_token` and `reset_token_expiry`
-
-### What @login_required Does
-
-```python
-@auth_bp.route("/api/auth/profile", methods=["GET"])
-@login_required  # ← this runs first, before the function
-def get_profile():
-    ...
-```
-
-Python decorators wrap a function with additional logic. `@login_required` adds a check at the start of the function: "is `user_id` in the session?" If not, it returns a 401 error immediately without running the actual function. This protects sensitive endpoints from unauthenticated access.
+When `@login_required` is placed above a route function, Python replaces the function with `decorated`. Before the real route logic runs, it checks the Flask session for `user_id`. If absent, returns 401 immediately. The browser's `window.fetch` override in `app.js` intercepts all 401 responses and redirects to `/login`.
+
+### Security considerations
+
+- Passwords are hashed with scrypt — cannot be reversed
+- OTP is cryptographically random — cannot be predicted
+- Reset tokens are cryptographically random — cannot be guessed
+- Generic error messages on login — doesn't reveal which emails are registered
+- OTP attempt limiting — prevents brute-force of the 6-digit code (only 10^6 = 1M possibilities)
+- OTP expiry — 10 minutes limits the attack window
+- Reset token expiry — 15 minutes
 
 ---
 
 ## 9. Chat System — Full Explanation
 
-### What Happens When a User Sends a Message
+### What happens when user sends a message
 
-1. User presses Enter or clicks the send button
-2. `sendMessage(text)` in `app.js` is called
-3. The user's message is immediately shown in the chat (optimistic UI)
-4. A "Thinking..." placeholder bot message bubble is created
-5. An `AbortController` is created (allows cancelling the stream)
-6. `isStreaming = true` — prevents sending another message while streaming
-7. A `fetch()` POST to `/api/chat` is made with the message, model, session ID, etc.
-8. The backend builds the prompt and calls Groq API
-9. The `ReadableStream` from `response.body` is read chunk by chunk
+1. User types in the `<textarea id="chat-input">` and presses Enter or clicks the send button
+2. `sendMessage(text)` is called in `app.js`
+3. Checks: not already streaming, not empty
+4. Adds user message to the UI immediately (using `textContent` to prevent XSS)
+5. Creates `AbortController` for stream cancellation
+6. Sets `isStreaming = true`, disables input and button
+7. Creates a "bot" message div with "Thinking..." indicator
+8. Sends `POST /api/chat` with: message, model, session_id, is_private, temperature, memory_enabled
+9. Server builds prompt (see below) and opens a streaming connection to Groq
+10. Tokens stream back; browser reads them from the `ReadableStream`
+11. When complete: renders markdown, shows action buttons (Copy, Regenerate)
+12. Re-enables input, sets `isStreaming = false`
 
-### What is SSE (Server-Sent Events)?
+### What is SSE (Server Sent Events)?
 
-SSE is a web standard for **one-way real-time data streaming** from server to client over a single HTTP connection. The server keeps the connection open and sends data whenever it has something new. Each "event" is a line like:
+SSE is a web standard where a server keeps an HTTP connection open and sends data to the browser over time, formatted as:
 ```
 data: {"text": "Hello"}\n\n
+data: {"text": " world"}\n\n
+data: [DONE]\n\n
 ```
-The double newline signals the end of one event. The browser's `fetch` API can read these as they arrive using `response.body.getReader()`.
 
-Unlike WebSockets (which are two-way), SSE only goes server → client, which is exactly what streaming chat responses need.
+Each event is text prefixed with `data: ` and terminated by two newlines (`\n\n`). The browser's Fetch API can read this in chunks via a `ReadableStream`. It is simpler than WebSockets (one-directional, no handshake) and works through most HTTP proxies.
 
-### How Streaming Works Technically
+In QUOKKA, Flask returns the response with `mimetype="text/event-stream"` and uses `stream_with_context(generate())` where `generate()` is a Python generator that yields SSE strings.
 
-On the server (Python generator):
+### How streaming works technically
+
+**Server side** (`routes/chat.py`):
 ```python
 def generate():
-    for line in response.iter_lines():   # Groq streams to us
-        if line.startswith("data: "):
-            chunk = line[6:]
-            if chunk == "[DONE]": break
-            data = json.loads(chunk)
-            token = data["choices"][0]["delta"].get("content", "")
-            if token:
-                yield f"data: {json.dumps({'text': token})}\n\n"  # we stream to browser
+    full_response = ""
+    for chunk in ask_llm_stream(prompt, model, temperature):
+        yield chunk  # Each chunk is: "data: {...}\n\n"
+        if chunk.startswith("data: "):
+            payload = json.loads(chunk[6:])
+            if "text" in payload:
+                full_response += payload["text"]
+    # After all tokens, save to DB
+    if not is_private and session_id:
+        storage.append_message(session_id, "user", message)
+        storage.append_message(session_id, "assistant", full_response)
 ```
 
-On the client (JavaScript):
-```javascript
-const reader = response.body.getReader();
-while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    // parse SSE lines, append to chat bubble
-}
-// When done, render full text as Markdown
-textContent.innerHTML = renderMarkdown(fullText);
-```
-
-While streaming: text is shown as plain text for performance. After streaming completes: the full text is rendered as Markdown (code blocks, bold, lists, etc.).
-
-### How Chat History Is Saved
-
-After the generator finishes streaming (the `for chunk in ask_llm_stream(...)` loop ends):
-```python
-if not is_private and session_id:
-    storage.append_message(session_id, "user", message)
-    storage.append_message(session_id, "assistant", full_response)
-```
-
-Both the user message and the complete AI response are written to the `messages` table.
-
-### What Is Private Mode and How It Works
-
-- **Server side:** When `is_private: true` is in the request body, `memory_enabled` is forced to False, RAG is skipped, and the final `storage.append_message()` calls are never reached. Nothing is saved.
-- **Client side:** The `privateMessages` JavaScript array holds the conversation in browser memory only. When the tab is closed, it's gone. The sidebar does not reload (no session to show). The privacy warning banner is visible.
-
-### How Memory Context Works (Last 6 Messages)
-
-When `memory_enabled` is true and `session_id` is provided:
-```python
-chat = storage.get_chat(session_id)
-messages = chat.get("messages", [])[-6:]  # last 6 messages
-for m in messages:
-    chat_context_lines.append(f"{m['role'].capitalize()}: {m['content']}")
-chat_context = "\n".join(chat_context_lines)
-```
-
-These 6 messages are prepended to the prompt so the AI "remembers" what was said recently in the conversation. The limit of 6 is a balance between context quality and staying within Groq's token limits.
-
-### How the Prompt Is Constructed
-
-```
-You are QUOKKA, a helpful AI assistant. Answer clearly, concisely, 
-and avoid any filler sentences.
-
-[If documents matched:]
-Use the provided context when relevant. If the context is insufficient, 
-answer using general knowledge while clearly distinguishing 
-document-derived information from model knowledge.
-
-Context:
-[chunk 1 text]
-
-[chunk 2 text]
-
-[If memory enabled:]
-User: [message 1]
-Assistant: [response 1]
-User: [message 2]
-...
-
-Question:
-[user's current message]
-
-Answer:
-```
-
----
-
-## 10. RAG Pipeline — Full Explanation
-
-### What File Formats Are Supported
-
-- **`.txt`** — plain text, read with standard `open()`
-- **`.pdf`** — extracted with `pypdf.PdfReader`, reads each page's text
-- **`.docx`** — extracted with `python-docx.Document`, reads each paragraph
-
-### How Text Is Extracted
-
-```python
-elif ext == ".pdf":
-    reader = PdfReader(file_path)
-    for page in reader.pages:
-        text += page.extract_text() + "\n"
-elif ext == ".docx":
-    doc = Document(file_path)
-    for para in doc.paragraphs:
-        text += para.text + "\n"
-```
-
-### What Is Chunking and Why We Do It
-
-Language models have a **context limit** — they can only process a certain number of words at once. Also, embedding a 50-page document as a single vector would lose all specificity. We need to be able to say "this specific paragraph is relevant," not "this entire document is relevant."
-
-Chunking splits the text into pieces. QUOKKA uses **paragraph-aware chunking**:
-1. First, split by double newlines (paragraph boundaries)
-2. Accumulate paragraphs until the chunk reaches ~400 words
-3. If a single paragraph exceeds 400 words, split it by sentences
-4. Each resulting chunk is a standalone, searchable unit
-
-### How Embeddings Are Generated
-
-```python
-vectors = self.get_model().encode(
-    file_chunks,
-    batch_size=64,
-    normalize_embeddings=True   # L2-normalize so cosine similarity = dot product
-)
-vectors = np.array(vectors).astype("float32")  # FAISS requires float32
-```
-
-The embedding model converts each chunk into a vector of 384 floats. Normalized means the vector's magnitude is 1.0, which makes the math for similarity calculations simpler and more consistent.
-
-### How the FAISS Index Is Built
-
-```python
-self.index = faiss.IndexFlatL2(self.dimension)  # exact L2 distance search
-self.index.add(vectors)                          # add all chunk vectors
-faiss.write_index(self.index, self.index_path)  # persist to disk
-np.save(self.chunks_path, np.array(self.chunks)) # save text chunks
-np.save(self.sources_path, np.array(self.sources)) # save filenames
-```
-
-`IndexFlatL2` does an exact (brute-force) search — for every query, it computes the distance to every stored vector. This is perfectly fine for up to tens of thousands of chunks. For millions of chunks, approximate search algorithms (HNSW, IVF) would be used.
-
-### How Similarity Search Works
-
-```python
-vec = self.get_model().encode([query], normalize_embeddings=True)
-vec = np.array(vec).astype("float32")
-distances, indices = self.index.search(vec, k=5)
-# distances: [[0.12, 0.34, 0.67, 0.89, 1.20]]
-# indices:   [[42,   17,   3,    88,   25 ]]
-```
-
-FAISS returns the indices of the 5 nearest stored vectors and their L2 distances. Lower distance = more similar.
-
-### What Is the Similarity Threshold
-
-After retrieval, chunks are filtered:
-```python
-cos_sim = 1 - (r["score"] / 2)   # convert L2 distance to cosine similarity
-if cos_sim > 0.55:                # only keep chunks ≥ 55% similar
-    filtered_results.append(r)
-```
-
-With normalized vectors, L2 distance and cosine similarity are related: `cos_sim = 1 - (L2² / 2)`. A threshold of 0.55 means we only use chunks that are at least 55% conceptually similar to the query. This prevents irrelevant content from confusing the AI.
-
-### How Retrieved Context Is Injected into Prompt
-
-```python
-context_parts = [r["text"] for r in filtered_results]
-doc_context = "\n\n".join(context_parts)
-doc_context_text = f"""
-Use the provided context when relevant...
-
-Context:
-{doc_context}
-"""
-```
-
-This text block is inserted into the prompt between the system instruction and the chat history.
-
-### What Is the Confidence Score and How It's Calculated
-
-```python
-avg_distance = sum(r["score"] for r in filtered_results) / len(filtered_results)
-cosine_sim = 1 - (avg_distance / 2)
-confidence_pct = max(0, round(cosine_sim * 100, 1))
-```
-
-The confidence score is the average cosine similarity of the retrieved chunks, expressed as a percentage. A 90% confidence means the retrieved passages are very strongly related to the query. This is shown in the frontend below the AI's answer: `📊 Confidence: 87.3%`.
-
----
-
-## 11. Frontend Explanation
-
-### How the UI Is Structured
-
-The main chat page (`index.html`) uses a two-column CSS layout:
-- **Left column** (`.sidebar`): chat history list, search box, new chat button, user avatar + logout button
-- **Right column** (`.main-content`): top header (model selector, export buttons, private toggle), chat messages area, input box with file upload, footer
-
-No JavaScript framework is used — everything is plain ("vanilla") HTML, CSS, and JavaScript. This keeps the bundle size minimal and eliminates build steps.
-
-### What app.js Does
-
-`app.js` is the complete frontend logic for the chat page (619 lines). It initializes all event listeners inside a `DOMContentLoaded` callback and manages:
-
-| Responsibility | How |
-|---|---|
-| Sending messages | `sendMessage(text)` builds the payload and calls `/api/chat` |
-| Streaming SSE | `ReadableStream` + `TextDecoder` in a `while(true)` loop |
-| Rendering Markdown | `marked.parse(text)` after stream ends |
-| Session management | `loadSessions()`, `startNewChat()`, `switchSession()` |
-| File upload | `FormData` POST to `/api/upload` |
-| Private mode | `updatePrivacyMode(bool)` toggles UI + resets state |
-| Export | Opens `/api/chat/{id}/export?format=txt/pdf` in a new tab |
-| Settings modal | Shows/hides a modal with temperature slider and memory toggle |
-| XSS protection | User messages use `textContent`, not `innerHTML` |
-| 401 interception | Overwrites `window.fetch` to redirect to `/login` on 401 |
-| Auto-resize textarea | `scrollHeight` technique |
-| Action buttons | Copy and Regenerate buttons added after each bot message |
-
-### How SSE Streaming Is Handled in JavaScript
-
-The key technique is reading chunks from a `ReadableStream`:
-
+**Client side** (`static/js/app.js`):
 ```javascript
 const reader = response.body.getReader();
 const decoder = new TextDecoder("utf-8");
@@ -1508,49 +1425,249 @@ while (true) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n\n");  // SSE events separated by double newline
-    buffer = lines.pop();               // keep incomplete event in buffer
+    const lines = buffer.split("\n\n");
+    buffer = lines.pop();  // Keep incomplete last chunk
     for (const line of lines) {
         if (!line.startsWith("data: ")) continue;
         const data = JSON.parse(line.slice(6));
         if (data.text) {
             fullText += data.text;
-            textContent.textContent = fullText;  // plain text while streaming
+            textContent.textContent = fullText;  // Live update
         }
     }
 }
-textContent.innerHTML = renderMarkdown(fullText);  // markdown after done
+// After complete: render markdown
+textContent.innerHTML = renderMarkdown(fullText);
 ```
 
-### How Markdown Rendering Works
+During streaming: `textContent.textContent` (plain text, fast). After complete: `textContent.innerHTML` with rendered Markdown. This two-phase approach avoids the performance cost of re-rendering Markdown on every token.
 
-QUOKKA uses `marked.js` (loaded from CDN) to render Markdown in bot responses:
+### How chat history is saved
+
+Messages are saved **after** the full response is received (inside `generate()` in `routes/chat.py`):
+```python
+if not is_private and session_id:
+    storage.append_message(session_id, "user", message)
+    storage.append_message(session_id, "assistant", full_response)
+```
+Both messages are inserted into the `messages` table with `role` and `content` and the current timestamp.
+
+### What is private mode and how it works
+
+Private mode is a client-side only mode:
+- **Server side:** `is_private=True` in the request tells the server not to save messages and not to run RAG
+- **Client side:** Messages are stored in a JavaScript array `privateMessages = []` in browser memory only
+- When the tab is closed, all private messages are gone — they were never written to the server database
+- The sidebar is visually blurred (CSS `pointer-events: none; opacity: 0.3; filter: blur(4px)`) to reinforce that no chats are being saved
+- A red warning banner confirms "Private Mode Active (Messages are not saved)"
+
+### How memory context works (last 6 messages)
+
+When `memory_enabled=true` and not private and a `session_id` exists:
+```python
+chat = storage.get_chat(session_id)
+messages = chat.get("messages", [])[-6:]  # Last 6 messages
+for m in messages:
+    chat_context_lines.append(f"{m['role'].capitalize()}: {m['content']}")
+chat_context = "\n".join(chat_context_lines)
+```
+The last 6 messages (3 pairs of user+assistant) are formatted as:
+```
+User: What is a black hole?
+Assistant: A black hole is...
+User: How do they form?
+```
+This context is prepended to the prompt so the AI can refer back to the conversation.
+
+### How the prompt is constructed
+
+```python
+prompt = f"""You are QUOKKA, a helpful AI assistant. Answer clearly, concisely, and avoid any filler sentences.
+{doc_context_text}
+{chat_context}
+
+Question:
+{message}
+
+Answer:"""
+```
+
+Where `doc_context_text` (if RAG found relevant chunks) is:
+```
+\nUse the provided context when relevant. If the context is insufficient, answer using general knowledge 
+while clearly distinguishing document-derived information from model knowledge.\n\nContext:\n[chunks]\n
+```
+
+---
+
+## 10. RAG Pipeline — Full Explanation
+
+### What file formats are supported
+
+- **PDF** (`.pdf`) — up to 50 pages, up to 15 MB
+- **DOCX** (`.docx`) — Microsoft Word format, no page limit beyond file size
+- **TXT** (`.txt`) — plain text, no page limit beyond file size
+
+### How text is extracted from each format
+
+From `memory/document_store.py`'s `extract_text()`:
+```python
+if ext == ".txt":
+    with open(file_path, "r", encoding="utf-8") as f:
+        text = f.read()
+elif ext == ".pdf":
+    reader = PdfReader(file_path)
+    pages = reader.pages[:50]  # First 50 pages max
+    for page in pages:
+        extracted = page.extract_text()
+        if extracted:
+            text += extracted + "\n"
+elif ext == ".docx":
+    doc = Document(file_path)
+    for para in doc.paragraphs:
+        text += para.text + "\n"
+```
+
+### What is chunking and why we do it
+
+Chunking = splitting a large text into smaller overlapping pieces. This is needed because:
+1. **Embedding models have input limits** — most can only handle ~512 tokens at once.
+2. **Precision** — embedding an entire 50-page document into one vector loses all detail. Smaller chunks let FAISS find the specific relevant paragraph, not just "the document is vaguely related."
+3. **Context window** — the AI model has a limit on how much text it can process. We can't send the entire document; we send only the relevant parts.
+
+QUOKKA uses paragraph-aware chunking: `re.split(r'\n\s*\n', text)` splits on blank lines (paragraph boundaries). Paragraphs are accumulated into chunks of ~400 words. When a paragraph alone exceeds 400 words, it is split at sentence boundaries.
+
+### How embeddings are generated
+
+```python
+vectors = self.get_model().encode(
+    file_chunks,
+    batch_size=16,              # Process 16 chunks at a time to avoid RAM spike
+    normalize_embeddings=True   # L2-normalize so cosine similarity = dot product
+)
+vectors = np.array(vectors).astype("float32")  # FAISS requires float32
+```
+
+`encode()` runs each chunk through the `BAAI/bge-small-en-v1.5` neural network and returns a 384-dimensional float array for each chunk. With 100 chunks, this produces a 100×384 matrix.
+
+### How FAISS index is built
+
+```python
+self.index = faiss.IndexFlatL2(self.dimension)  # 384-dimensional exact search
+# ...
+self.index.add(vectors)  # Add all vectors at once
+```
+
+`IndexFlatL2` is an exact search index using L2 (Euclidean) distance — it compares every query vector against every stored vector. For small document collections (hundreds of chunks), this is perfectly fast. For large-scale deployments (millions of vectors), approximate search indexes would be better.
+
+### How similarity search works
+
+At query time:
+```python
+vec = self.get_model().encode([query], normalize_embeddings=True)
+vec = np.array(vec).astype("float32")
+k = min(top_k, self.index.ntotal)  # Can't request more than we have
+distances, indices = self.index.search(vec, k)
+```
+
+`index.search(vec, k)` returns the `k` closest vectors and their L2 distances. Since vectors are L2-normalized, L2 distance and cosine similarity are related: `cosine_sim = 1 - (L2_distance / 2)`.
+
+### What is the similarity threshold
+
+In `routes/chat.py`:
+```python
+cos_sim = 1 - (r["score"] / 2)
+if cos_sim > 0.55:  # Similarity threshold
+    filtered_results.append(r)
+```
+
+Only chunks with cosine similarity above 55% are included. This prevents the AI from receiving irrelevant context when the user's question has nothing to do with the uploaded document.
+
+### How retrieved context is injected into prompt
+
+All passing chunks are joined and inserted into the prompt:
+```python
+doc_context = "\n\n".join(context_parts)
+doc_context_text = f"\nUse the provided context when relevant...\n\nContext:\n{doc_context}\n"
+```
+
+### What is confidence score and how it's calculated
+
+```python
+avg_distance /= len(filtered_results)   # Average L2 distance
+cosine_sim = 1 - (avg_distance / 2)     # Convert to cosine similarity
+confidence_pct = max(0, round(cosine_sim * 100, 1))  # As percentage
+```
+
+The confidence score (e.g., 82.5%) represents how closely the retrieved chunks matched the user's question semantically. It is displayed below the AI response in the metadata block alongside the source filenames.
+
+---
+
+## 11. Frontend Explanation
+
+### How the UI is structured (no framework, vanilla JS)
+
+QUOKKA uses no JavaScript framework (no React, Vue, or Angular). The entire frontend is:
+- **HTML** (`templates/`) — structure and semantic markup
+- **CSS** (`static/css/`) — all styling, animations, and layout
+- **Vanilla JavaScript** (`static/js/`) — all behavior and API calls
+
+This was a deliberate choice for simplicity — no build step, no node_modules, no webpack. The HTML is rendered server-side by Flask/Jinja2. JavaScript manipulates the DOM dynamically after page load.
+
+### What app.js does
+
+`app.js` (619 lines) is the complete frontend logic for the chat page:
+- Initializes by grabbing all DOM element references
+- Sets up event listeners for: chat input (Enter key), send button, new chat button, privacy toggle, file upload, settings modal, export buttons, search input, logout button
+- Manages state: `currentSessionId`, `isStreaming`, `lastUserMessage`, `activeStreamController`, `privateMessages`
+- Fetches session list from API and renders it dynamically
+- Sends messages and reads streaming SSE responses
+- Handles all real-time UI updates during streaming
+- Overrides `window.fetch` globally to redirect to `/login` on any 401 response
+
+### How SSE streaming is handled in JS
+
+The browser reads the response as a `ReadableStream`. The key insight is that network chunks don't align with SSE event boundaries — a single chunk may contain part of an event, one event, or multiple events. The code handles this with a buffer:
+```javascript
+buffer += decoder.decode(value, { stream: true });
+const lines = buffer.split("\n\n");
+buffer = lines.pop();  // The last element might be incomplete
+for (const line of lines) {
+    // process complete events
+}
+```
+`lines.pop()` removes and saves the last element (which may be an incomplete event waiting for more data). Complete events are processed; the incomplete fragment is kept in `buffer` for the next iteration.
+
+### How markdown rendering works (marked.js)
+
+`marked.js` is loaded from a CDN before `app.js`. It converts Markdown text to HTML:
 ```javascript
 function renderMarkdown(text) {
     if (typeof marked !== "undefined") {
         return marked.parse(text);
     }
-    // Fallback if CDN fails: escape HTML and replace newlines with <br>
+    // Fallback: escape HTML
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;")...
 }
 ```
+During streaming: `textContent.textContent = fullText` (raw text, fast, no HTML parsing).  
+After streaming completes: `textContent.innerHTML = renderMarkdown(fullText)` (HTML, supports headings, code blocks, bold, etc.).
 
-Markdown is **only applied to bot messages**, never to user messages. User messages use `textContent` (which escapes HTML automatically), preventing XSS attacks where a user types `<script>alert('hacked')</script>`.
+This two-phase approach is a performance optimization — parsing Markdown on every token would be expensive and cause visible flickering.
 
-### How the Model Dropdown Works
+### How the model dropdown works
 
-The dropdown in the header has four options with `value` attributes matching keys in `GROQ_MODEL_MAP`:
+In `templates/index.html`:
 ```html
 <select id="model-select" class="dropdown">
-    <option value="llama3.1:8b">LLaMA 3.1 8B ⚡</option>
-    <option value="llama3.1:70b">LLaMA 3 70B 🔥</option>
-    ...
+  <option value="llama3.1:8b">LLaMA 3.1 8B ⚡ Fast</option>
+  <option value="llama3.1:70b">LLaMA 3.3 70B 🔥 Smart</option>
 </select>
 ```
 
-When the user sends a message, `modelSelect.value` is included in the POST body. The backend maps it to the actual Groq model ID via `GROQ_MODEL_MAP`.
+In `app.js`, when sending a message: `model: modelSelect.value`. The server receives `"llama3.1:8b"` or `"llama3.1:70b"`, looks it up in `GROQ_MODEL_MAP`, and sends the actual Groq model ID.
 
-### How Private Mode Toggle Works
+### How private mode toggle works
 
 ```javascript
 privacyCheckbox.addEventListener("change", (e) => {
@@ -1559,206 +1676,184 @@ privacyCheckbox.addEventListener("change", (e) => {
 
 function updatePrivacyMode(isPrivate) {
     if (isPrivate) {
-        document.body.classList.add("privacy-mode");
+        document.body.classList.add("privacy-mode");  // CSS blurs sidebar
         privateWarning.style.display = "flex";
-        privateMessages = [];  // clear in-memory history
-        startNewChat();        // create a blank session (no DB entry)
+        privateMessages = [];
+        startNewChat();  // Shows "You are in Private Mode" message
     } else {
         document.body.classList.remove("privacy-mode");
         privateWarning.style.display = "none";
-        startNewChat();        // create a normal DB-backed session
+        privateMessages = [];
+        startNewChat();  // Returns to normal mode
     }
 }
 ```
 
-In private mode, `startNewChat()` sets `currentSessionId = null` and exits early without making an API call. Messages sent without a `session_id` are not saved by the backend.
+The `privacy-mode` CSS class applies:
+```css
+body.privacy-mode .sidebar {
+    pointer-events: none;
+    opacity: 0.3;
+    filter: blur(4px);
+}
+```
 
-### How File Upload Works
+### How file upload works
 
 ```javascript
 fileInput.addEventListener("change", async (e) => {
     const file = e.target.files[0];
+    fileNameSpan.textContent = "Uploading...";
     const formData = new FormData();
     formData.append("file", file);
     const res = await fetch("/api/upload", { method: "POST", body: formData });
     const data = await res.json();
-    // Show file name and "Indexed ✓" indicator
+    if (data.success) {
+        fileNameSpan.textContent = file.name + " (Indexed ✓)";
+    }
 });
 ```
 
-The file is sent as `multipart/form-data`. The backend handles processing asynchronously.
+`FormData` is the browser's built-in class for building multipart form data (the format used for file uploads). It automatically sets the correct `Content-Type: multipart/form-data; boundary=...` header.
 
-### What auth.js Does
+### How export works
 
-`auth.js` is a shared utility library included by all auth pages via `<script src="/static/js/auth.js">`. It provides:
+```javascript
+exportTxtBtn.addEventListener("click", () => {
+    if (!currentSessionId || privacyCheckbox.checked) return;
+    window.open(`/api/chat/${currentSessionId}/export?format=txt`, "_blank");
+});
+```
 
-- **`postJson(url, data)`** — wrapper around `fetch()` that adds JSON headers and handles network errors
-- **`togglePasswordVisibility(inputId, iconId)`** — show/hide password in any input field
-- **`checkPasswordStrength(password)`** — returns score (1/2/3) and label (Weak/Medium/Strong) based on length, digits, special chars
-- **`updateStrengthBar(password, barId, labelId)`** — updates the visual strength bar width and color in real time
-- **`setupOTPInputs(containerSelector)`** — makes 6 individual OTP boxes behave as one: auto-advances focus, handles Backspace, handles paste (pastes all 6 digits at once)
-- **`startResendCountdown(buttonId, seconds)`** — disables the Resend OTP button and shows a countdown from 60
-- **`showError(elementId, message)`** / **`hideError(elementId)`** / **`showSuccess(elementId, message)`** — utility display helpers
+`window.open()` opens the download URL in a new browser tab. Since the server responds with `Content-Disposition: attachment`, the browser automatically downloads the file instead of displaying it.
+
+### What auth.js does
+
+`auth.js` is a shared utility library (not a page handler). It provides:
+- HTTP helpers: `postJson()`, `putJson()` — send JSON and handle errors
+- UI helpers: `showError()`, `showSuccess()`, `clearAlert()` — manage alert box display
+- Password toggle: `togglePw()` — eye icon to show/hide password
+- Password strength: `strengthScore()`, `updateStrength()` — animated strength bar
+- OTP wiring: `setupOTP()` — auto-focus, backspace, paste support for 6-box OTP input
+- OTP reading: `getOTP()` — collects all 6 values
+- Countdown: `startCountdown()` — "Resend in 59s..." timer
+- Loading state: `setLoading()` — disable button + show spinner
+
+It is included via `<script src="/static/js/auth.js">` in all auth pages and provides functions that the inline page scripts call.
 
 ---
 
 ## 12. Security Features
 
-### Password Hashing (Werkzeug PBKDF2-HMAC-SHA256)
-Passwords are never stored in plain text. Even if the database is leaked, passwords cannot be recovered without brute-force cracking, which is made intentionally slow by the 600,000-iteration key derivation.
-
-### OTP Expiry — 10 Minutes
-OTPs stored in `otp_expiry` are validated on every verification attempt. Expired OTPs are rejected with a clear error message.
-
-### OTP Attempt Limiting — 5 Maximum
-`otp_attempts` is incremented on every verification attempt. At 5 failed attempts, the unverified account is **deleted** from the database entirely (forcing the user to register again with a fresh OTP). This prevents brute-force OTP guessing.
-
-### Session-Based Authentication
-User identity is maintained via encrypted Flask sessions stored in the browser cookie. The cookie is signed with `SECRET_KEY` — tampered cookies are rejected.
-
-### Login Required Protection
-All profile and account management routes are decorated with `@login_required`. Unauthenticated requests receive a 401 response.
-
-### Private Mode — No Server Storage
-In private mode, the backend explicitly skips all `storage.append_message()` calls. No conversation data touches the database. The privacy is enforced server-side (not just client-side).
-
-### Email Verification Before Login
-`is_verified` must be `1` for login to succeed. Unverified accounts cannot access any protected resources.
-
-### Reset Token Expiry — 15 Minutes
-Password reset tokens are stored with a 15-minute expiry. After use, the token is cleared from the database immediately (cannot be reused).
-
-### No Email Enumeration
-The `/api/auth/forgot-password` endpoint always returns the same success message regardless of whether the email exists. An attacker cannot use this endpoint to discover which emails are registered.
-
-### XSS Prevention — textContent vs innerHTML
-User-generated text (chat messages) is always inserted using `textContent`, which escapes all HTML. Only trusted AI-generated text (which has its own content safety) uses `innerHTML` via `renderMarkdown()`.
-
-### `debug=False` in Production
-Flask's debug mode exposes an interactive debugger in the browser. Setting `debug=False` (as done in `app.py`) prevents any internal code from being exposed to users.
-
-### Secure Filename on Upload
-`werkzeug.utils.secure_filename()` strips all path components (`../`, `/`), null bytes, and special characters from uploaded filenames, preventing path traversal attacks.
+| Security Measure | How It Works | Where It's Implemented |
+|---|---|---|
+| **Password hashing** | Passwords stored as scrypt hashes — cannot be reversed | `routes/auth.py` using `werkzeug.security.generate_password_hash` |
+| **OTP expiry (10 minutes)** | OTP stored with ISO timestamp; checked against `datetime.now()` before validating | `routes/auth.py` — `verify_otp()` |
+| **OTP attempt limiting (5 max)** | Attempt counter incremented on wrong guess; account deleted at 5 | `routes/auth.py` — `verify_otp()`, `memory/chat_storage.py` — `increment_otp_attempts()` |
+| **Session-based authentication** | Flask sessions use HMAC-signed cookies — cannot be forged without `SECRET_KEY` | `app.py` + all routes using `session[]` |
+| **`login_required` protection** | Decorator prevents unauthenticated access to all API endpoints | `routes/auth_middleware.py` — applied in `routes/chat.py`, `routes/sessions.py`, `routes/upload.py` |
+| **Private mode (zero server storage)** | `is_private=True` prevents any DB writes; client-side only history | `routes/chat.py` checks `is_private` before every `storage.append_message()` |
+| **Email verification before login** | `is_verified` must be 1 to log in; OTP verification sets it | `routes/auth.py` — `login()` checks `is_verified` |
+| **Reset token expiry (15 minutes)** | Token stored with expiry timestamp; checked in `reset_password()` | `routes/auth.py` — `reset_password()` |
+| **XSS prevention (textContent)** | User-provided text set via `textContent` not `innerHTML`, preventing HTML injection | `static/js/app.js` — all user messages use `textContent` |
+| **Filename sanitization** | `secure_filename()` removes path traversal characters from uploaded filenames | `routes/upload.py` using `werkzeug.utils.secure_filename` |
+| **File size validation** | 15 MB limit set at Flask level + double-checked after save | `app.py` (`MAX_CONTENT_LENGTH`), `routes/upload.py` |
+| **PDF page limit** | Rejects PDFs > 50 pages to prevent memory exhaustion | `routes/upload.py`, `memory/document_store.py` |
+| **Email enumeration prevention** | Forgot password always returns success regardless of whether email exists | `routes/auth.py` — `forgot_password()` |
+| **Generic login errors** | "Invalid email or password" instead of "Email not found" | `routes/auth.py` — `login()` |
+| **`debug=False` in production** | Flask debug mode disabled in production (debug mode can expose source code) | `app.py` line 114: `app.run(..., debug=False)` |
+| **Global 401 redirect** | All 401 API responses redirect to `/login` | `static/js/app.js` — `window.fetch` override |
 
 ---
 
 ## 13. Environment Variables
 
-Create a file named `.env` in the project root with these variables:
+All environment variables are stored in the `.env` file. The app uses `python-dotenv` (`load_dotenv()` in `app.py`) to load them into `os.environ` at startup.
 
-### `SECRET_KEY`
-**What it controls:** Flask uses this to cryptographically sign and encrypt session cookies. If this key leaks, attackers could forge session cookies and impersonate any user.  
-**What happens if missing:** Flask falls back to `"quokka-dev-secret"` (hardcoded in `app.py`) — this is insecure for production because it's publicly known.  
-**Example value:** `my-super-random-string-here-12345`  
-**How to generate:** `python -c "import secrets; print(secrets.token_hex(32))"`
+| Variable | What It Controls | What Happens If Missing | Example Value |
+|---|---|---|---|
+| `SECRET_KEY` | Flask session signing key. Used to sign the session cookie so it cannot be forged. | Sessions cannot be trusted; Flask falls back to a weak default `"quokka-dev-secret-change-me"` | `xK9#mP2$qRvL8nWz` (any random string, ≥32 chars recommended) |
+| `GROQ_API_KEY` | Authentication for Groq API. Sent in every `Authorization: Bearer ...` header to Groq. | All AI responses fail with 401 from Groq | `gsk_abc123...` (from console.groq.com) |
+| `MAIL_SERVER` | Gmail SMTP server hostname (legacy, not currently used by the Brevo-based code) | Not actively used | `smtp.gmail.com` |
+| `MAIL_PORT` | Gmail SMTP port (legacy, not currently used) | Not actively used | `587` |
+| `MAIL_USERNAME` | Gmail address (legacy, not currently used) | Not actively used | `you@gmail.com` |
+| `MAIL_PASSWORD` | Gmail App Password (legacy, not currently used) | Not actively used | `abcd efgh ijkl mnop` |
+| `BASE_URL` | Base URL of the deployed app. Used to build the password reset link: `{BASE_URL}/reset-password?token=...` | Reset links point to `http://localhost:8000` even in production | `https://quokka-ai.onrender.com` |
+| `FLASK_ENV` | Sets Flask environment (`development` or `production`) | Flask defaults to production | `development` |
+| `PORT` | Port for the development server. Render sets its own `PORT` automatically. | Flask defaults to 8000 | `8000` |
+| `ENABLE_RAG` | If `"true"`, the warmup function pre-loads the embedding model at startup. | Defaults to `false` — embedding model loaded lazily on first upload | `true` or `false` |
+| `BREVO_API_KEY` | Authentication for Brevo email API (required for email to work in production) | All email sending raises `RuntimeError` — OTP, reset, welcome emails all fail | `xkeysib-...` (from Brevo dashboard) |
+| `MAIL_FROM` | Sender email address used in Brevo API calls (must be verified in Brevo) | Email sending raises `RuntimeError` | `noreply@quokka.ai` |
 
-### `MAIL_USERNAME`
-**What it controls:** The Gmail address that QUOKKA sends emails from.  
-**What happens if missing:** All email sending fails — registration OTPs and password resets won't work.  
-**Example value:** `yourapp@gmail.com`
-
-### `MAIL_PASSWORD`
-**What it controls:** The Gmail App Password (not your regular Gmail password).  
-**What happens if missing:** Authentication to Gmail SMTP fails — all emails fail.  
-**Example value:** `abcd efgh ijkl mnop` (16-character App Password)  
-**Note:** Generate at Google Account → Security → 2-Step Verification → App Passwords
-
-### `GROQ_API_KEY`
-**What it controls:** Authentication for the Groq AI API. Every request to Groq must include this key in the `Authorization` header.  
-**What happens if missing:** All chat requests return a 401 error from Groq — the AI feature stops working entirely.  
-**Example value:** `gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`  
-**How to get:** Sign up free at [console.groq.com](https://console.groq.com)
-
-### `BASE_URL`
-**What it controls:** The base URL of the running application, used to construct password reset links in emails.  
-**What happens if missing:** Defaults to `http://localhost:8000` — password reset emails will have broken links in production.  
-**Example value:** `https://your-app.onrender.com` (for Render deployment)
-
-### `MAIL_SERVER` / `MAIL_PORT`
-**What they control:** The SMTP server address and port. Both have sensible defaults (`smtp.gmail.com`, `587`) already set in `app.py`, so these rarely need to be set.
-
-### `PORT`
-**What it controls:** The port the Flask development server listens on.  
-**Default:** `8000` (set in `app.py`: `int(os.environ.get("PORT", 8000))`)
+> **Note:** `BREVO_API_KEY` and `MAIL_FROM` are not in the current `.env` file but are required by `services/mail_service.py`. The `.env` file shows Gmail SMTP credentials from an older version — these need to be updated for production deployment.
 
 ---
 
 ## 14. Deployment Plan
 
-### Why Render Was Chosen
+### Why Render was chosen
 
-Render is a cloud platform that:
-- Has a generous free tier for web services
-- Automatically detects Python apps and knows to use `pip install -r requirements.txt`
-- Supports environment variables through a UI
-- Automatically redeploys when you push to GitHub
-- Provides HTTPS out of the box
-- Doesn't require any server management knowledge
+Render is a cloud hosting platform that offers:
+- **Free tier** for small web services (with some limitations: sleeps after inactivity, ephemeral storage)
+- **Simple deployment**: connects to GitHub, auto-deploys on every push to `main`
+- **Python-native**: auto-detects Python apps, runs pip install automatically
+- **Environment variable management**: secrets stored separately from code in the Render dashboard
 
-### Step-by-Step Deployment Instructions
+### What changes are needed for production
 
-**Step 1: Prepare Your Repository**
+1. **Email service**: Switch from legacy Gmail SMTP config to Brevo. Add `BREVO_API_KEY` and `MAIL_FROM` to Render environment.
+2. **`BASE_URL`**: Set to the actual Render URL (e.g., `https://quokka-ai.onrender.com`)
+3. **`SECRET_KEY`**: Generate a strong random key (e.g., `python -c "import secrets; print(secrets.token_hex(32))"`)
+4. **Database persistence**: Render free tier has ephemeral storage — the SQLite database and FAISS files are lost on every redeploy. For production: either upgrade to a Render plan with a persistent disk, or migrate to PostgreSQL.
 
-Ensure your `.gitignore` excludes sensitive files:
+### What environment variables need to be set on Render
+
+In Render dashboard → Service → Environment:
 ```
-.env
-venv/
-__pycache__/
-data/
-*.npy
-*.faiss
+SECRET_KEY          = <32+ char random string>
+GROQ_API_KEY        = gsk_...
+BREVO_API_KEY       = xkeysib-...
+MAIL_FROM           = your-verified-sender@domain.com
+BASE_URL            = https://your-service-name.onrender.com
+ENABLE_RAG          = true
 ```
 
-**Step 2: Push to GitHub**
+### What is Gunicorn and how to configure it
+
+Gunicorn is configured via `gunicorn.conf.py` with:
+- `workers = 1` — one process (FAISS index is process-local; more workers would each have separate indexes)
+- `worker_class = "sync"` — synchronous I/O (correct for SSE streaming)
+- `timeout = 120` — 120 second timeout per request (AI generation can take 30+ seconds)
+
+Start command: `gunicorn app:app --config gunicorn.conf.py`
+
+### How to push to GitHub
+
 ```bash
 git init
 git add .
-git commit -m "Initial QUOKKA commit"
-git branch -M main
+git commit -m "Initial commit"
 git remote add origin https://github.com/your-username/QUOKKA.git
 git push -u origin main
 ```
+Ensure `.gitignore` is properly set so `.env`, `data/`, `uploads/`, `memory/faiss_data/`, `sessions.db` are NOT pushed.
 
-**Step 3: Create a Render Web Service**
-1. Go to [render.com](https://render.com) and sign in
-2. Click "New +" → "Web Service"
-3. Connect your GitHub account and select the QUOKKA repository
-4. Render will auto-detect it as a Python app
+### Step-by-step deployment instructions
 
-**Step 4: Configure the Build**
-- **Build Command:** `pip install -r requirements.txt`
-- **Start Command:** `gunicorn app:app`
-- **Python Version:** 3.10 or higher
-
-**Step 5: Set Environment Variables**
-
-In the Render dashboard, go to your service → Environment → Add the following:
-
-| Key | Value |
-|-----|-------|
-| `SECRET_KEY` | A long random string |
-| `MAIL_USERNAME` | your-gmail@gmail.com |
-| `MAIL_PASSWORD` | Your 16-char App Password |
-| `GROQ_API_KEY` | gsk_... |
-| `BASE_URL` | https://your-service-name.onrender.com |
-
-**Step 6: Deploy**
-Click "Deploy" — Render will install dependencies and start Gunicorn. Your app will be live at `https://your-service-name.onrender.com`.
-
-### What Gunicorn Does in Production
-
-```bash
-gunicorn app:app
-# Reads as: "run the `app` object from `app.py` using Gunicorn"
-```
-
-Gunicorn spawns (by default) 2× CPU cores + 1 worker processes. On Render's free tier (0.1 CPU), you'll get 1-2 workers. Each worker can handle one request at a time, so with 2 workers, 2 users can be served simultaneously.
-
-### Production Considerations
-
-- **Database persistence:** Render's free tier does not include persistent storage. The SQLite `data/chats.db` file and FAISS indexes in `memory/doc_data/` will be **lost on every redeploy or restart**. To fix this, add a Render Disk ($7/month) or migrate to an external database.
-- **Environment variables:** Never commit `.env` to Git. Always set secrets via the Render dashboard.
-- **debug=False:** Already set in `app.py` — Flask's debugger is not exposed in production.
+1. **Create a Brevo account** at brevo.com and get an API key. Verify a sender email address.
+2. **Create a GitHub repository** and push your code (without `.env`).
+3. **Create a Render account** at render.com.
+4. In Render: **New → Web Service → Connect your GitHub repo**.
+5. Configuration:
+   - Name: `quokka-ai`
+   - Runtime: Python 3
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `gunicorn app:app --config gunicorn.conf.py`
+6. In **Environment**: add all required environment variables listed above.
+7. Click **Deploy**. Render installs dependencies and starts the app.
+8. Visit the Render URL to confirm the login page loads.
+9. **Test the email**: visit `https://your-url.onrender.com/test-email` to verify Brevo is working.
+10. Every future push to `main` on GitHub triggers an automatic redeploy.
 
 ---
 
@@ -1766,98 +1861,96 @@ Gunicorn spawns (by default) 2× CPU cores + 1 worker processes. On Render's fre
 
 ### Current Limitations
 
-**SQLite won't scale beyond a small user base**  
-SQLite handles reads well but serializes writes. With 10+ concurrent users actively chatting, write locks could cause delay. For >50 simultaneous users, migrate to PostgreSQL.
-
-**Free Render tier sleeps after inactivity**  
-Render's free tier spins down the server after 15 minutes of no traffic. The next request wakes it up but takes 30–60 seconds (the loading spinner will show for a while). Paid tier eliminates this.
-
-**FAISS index is lost on Render redeploy without a persistent volume**  
-Every time the service restarts or redeploys, the `memory/doc_data/` folder is wiped. Users would need to re-upload all documents. Fix: Render Disk mounted at the `memory/` path.
-
-**No rate limiting on API endpoints**  
-Any user (or bot) can send unlimited messages per second. This could exhaust Groq API rate limits or overload the server. Flask-Limiter can add per-IP rate limiting.
-
-**Per-user document isolation does not exist**  
-All uploaded documents go into a single shared FAISS index. Every user can potentially influence the document context for other users. The architecture needs per-user or per-chat document namespacing.
-
-**The FaissStore per-session memory is not active**  
-`memory/faiss_store.py` exists but is not used in the chat pipeline. Long conversations rely only on the last 6 messages, which means the AI can "forget" earlier parts of a long conversation.
-
-**Mobile UI is partially complete**  
-The sidebar collapses on small screens via media queries in `styles.css`, but the mobile experience has not been polished.
+| Limitation | Details |
+|---|---|
+| **SQLite won't scale** | SQLite has write locking — only one write at a time. For >100 concurrent users, PostgreSQL is necessary. |
+| **Free Render tier sleeps** | After 15 minutes of inactivity, the free Render service "sleeps." The next request takes 30–60 seconds to wake up. |
+| **No rate limiting** | There are no limits on how many API calls a single user or IP can make. A malicious user could exhaust the Groq API quota. |
+| **Mobile UI partially complete** | The sidebar hides below 768px, but there's no hamburger menu to access chat history on mobile. |
+| **FAISS index lost on redeploy** | Render's free tier has no persistent disk. Every redeploy erases `data/` and `memory/doc_data/` — all uploaded documents and the SQLite database are lost. |
+| **All documents shared** | The document RAG index is global — all users' uploaded documents are in the same FAISS index. User A's document affects User B's responses. |
+| **No real-time collaboration** | Only one user session per server process; no WebSocket-based real-time features. |
+| **`ENABLE_RAG` env var** | The warmup uses an env var but the code defaults the embedding model name to `all-MiniLM-L6-v2` in `document_store.py` while `app.py` warmup uses the same name — but `document_store.py` actually uses `BAAI/bge-small-en-v1.5`. This inconsistency means the warmup might load a different model than what document_store.py uses. |
+| **`flask-mail` and Brevo** | `flask-mail` is in `requirements.txt` but unused. The `.env` has Gmail SMTP settings that are not used. This creates confusion about the actual email mechanism. |
 
 ### Future Improvements to Consider
 
-| Improvement | Why | How |
-|---|---|---|
-| Switch to PostgreSQL | Handles concurrent writes at scale | Use `psycopg2` + SQLAlchemy, set `DATABASE_URL` on Render |
-| Add rate limiting | Prevent abuse, protect Groq API quota | Flask-Limiter with Redis backend |
-| Persistent volume for FAISS | Don't lose document indexes on restart | Render Disk at `/data` mount path |
-| Per-user document isolation | Security and relevance | Namespace FAISS indexes by `user_id` |
-| Activate FaissStore | Semantic long-term memory | Wire `store_message()`/`retrieve_context()` in `routes/chat.py` |
-| PWA support | Install as an app, offline support | Add `manifest.json` and a service worker |
-| Chat sharing | Share a read-only link to a conversation | Generate a public share token, new `/share/<token>` route |
-| Streaming document processing feedback | Show indexing progress | WebSocket or SSE progress events from `process_file()` |
-| Model-specific prompt templates | Better results from each model | Different system prompts per model in `model_router.py` |
-| Multi-language support | International users | i18n library, language selector |
+| Improvement | Why |
+|---|---|
+| **Switch to PostgreSQL** | Scales to thousands of concurrent users; persistent on Render with a paid disk |
+| **Add rate limiting (Flask-Limiter)** | Prevent API abuse and Groq quota exhaustion |
+| **Persistent volume on Render** | Attach a disk to keep SQLite and FAISS data across redeploys |
+| **Multi-user document isolation** | Each user's uploaded documents should be in their own FAISS namespace |
+| **Per-session semantic memory** | Activate `memory/faiss_store.py` to give the AI better long-term memory |
+| **PWA support** | Add a service worker and manifest to make the app installable as a desktop/mobile app |
+| **Chat sharing feature** | Generate a public link to share a conversation |
+| **Mobile sidebar** | Add a hamburger menu for mobile access to chat history |
+| **Streaming title generation** | Generate smarter chat titles using a separate LLM call |
+| **Activate Pinecone store** | Implement `memory/pinecone_store.py` for cloud-scale vector search |
+| **Remove flask-mail / clean .env** | Remove the unused dependency and align `.env` with the actual Brevo-based email code |
+| **Chunk overlap** | The current `chunk_text()` accepts an `overlap` parameter but doesn't implement it — add overlapping chunks for better retrieval at chunk boundaries |
 
 ---
 
 ## 16. Glossary
 
 **API (Application Programming Interface)**  
-A way for two programs to communicate with each other over the internet. One program sends a request (like "generate a response to this text") and the other sends back a response. QUOKKA uses the Groq API to talk to AI models.
+A way for two software programs to communicate with each other. Like a waiter in a restaurant — you (the app) tell the waiter (the API) what you want, the kitchen (the other program) prepares it, and the waiter brings it back. In QUOKKA, we use the Groq API to "order" AI responses.
 
 **LLM (Large Language Model)**  
-An AI system trained on huge amounts of text data that can understand and generate human language. Examples: GPT-4, LLaMA, Gemma. QUOKKA uses LLaMA and Gemma models via Groq.
+A type of artificial intelligence trained on vast amounts of text that can understand and generate human language. Examples: GPT-4, Claude, LLaMA. LLMs predict the next word given everything before it — do this billions of times and you get coherent responses.
 
 **Parameters (in context of AI models)**  
-The billions of mathematical "knobs" inside a neural network. Each parameter is a number that was set during training. More parameters generally means smarter behavior. "8B" means 8 billion parameters.
+The numerical "weights" inside a neural network that are tuned during training. More parameters = more capacity to learn and remember patterns. LLaMA 3.1 8B has 8 billion parameters. Think of them as the neurons in the AI's brain.
 
 **Token**  
-The unit of text that language models work with. A token is roughly 3-4 characters or 0.75 words. "Hello world" is 2 tokens. Models charge per token and have token limits. In QUOKKA, max_tokens is set to 512 for chat responses.
+The basic unit that LLMs work with. A token is roughly a word or part of a word. "Hello" = 1 token. "Unbelievable" might be 2 tokens. LLMs generate one token at a time, which is why you see text appearing word by word during streaming.
 
 **Streaming**  
-Sending data in small pieces as it becomes available, rather than waiting for everything to be ready. QUOKKA uses streaming so AI responses appear word by word instead of all at once after a long wait.
+Sending data incrementally as it becomes available, instead of waiting for everything to be ready. In QUOKKA, instead of waiting for the full AI response (which takes seconds), we show each word as it's generated — making the interface feel much faster.
 
-**RAG (Retrieval Augmented Generation)**  
-A technique where relevant documents are retrieved and given to an AI as context before it generates an answer. This allows the AI to answer questions about documents it was never trained on.
+**RAG (Retrieval-Augmented Generation)**  
+A technique where the AI's response is grounded in specific retrieved documents. Instead of generating purely from its training memory, the AI first searches a database of relevant text chunks, then uses those chunks plus its training knowledge to answer. Like giving an open-book exam instead of a closed-book one.
 
 **Vector**  
-A list of numbers that represents something — in QUOKKA's case, the "meaning" of a piece of text. Two pieces of text with similar meaning will have similar vectors (their numbers will be close to each other mathematically).
+A list of numbers that represents something in mathematical space. In QUOKKA, each text chunk is converted into a 384-number vector by the embedding model. Vectors that are numerically close to each other represent text that is semantically similar.
 
 **Embedding**  
-The process of converting text into a vector. The embedding model (`BAAI/bge-small-en-v1.5`) does this. "Embedding" can also refer to the resulting vector itself.
+The process of converting text (or any data) into a vector. The embedding model (BAAI/bge-small-en-v1.5) takes a string like "What causes headaches?" and outputs 384 numbers that capture its meaning. Similar sentences produce similar embedding vectors.
 
 **FAISS (Facebook AI Similarity Search)**  
-A library that stores many vectors and can find the most similar ones to a query vector very quickly. QUOKKA uses it to find document chunks most relevant to a user's question.
+A library that efficiently finds the most similar vectors in a large collection. In QUOKKA, it stores document chunk vectors and quickly finds which chunks are most similar to the user's question vector.
 
 **OTP (One-Time Password)**  
-A short code (in QUOKKA's case, 6 digits) that is generated randomly, sent to a user's email, and can only be used once before it expires. Used to verify that a user actually owns the email address they registered with.
+A code that can only be used once and expires after a short period. Used in QUOKKA to verify that a new user owns the email address they provided during registration. QUOKKA generates a 6-digit OTP (e.g., 482931) that expires after 10 minutes.
 
 **Session**  
-A way to "remember" a user across multiple web requests. HTTP is stateless (each request is independent), but sessions allow a server to say "this request is from user Alice." Flask sessions are stored as encrypted cookies in the user's browser.
+A way to remember a user's identity across multiple web requests. When you log into QUOKKA, the server creates a session that includes your user ID. Your browser stores a session cookie. On every future request, the browser sends the cookie back so the server knows who you are — without you re-entering your password every time.
 
 **Hashing**  
-A mathematical transformation that converts data (like a password) into a fixed-length string of characters. It is one-way: you cannot reverse a hash to get the original data. QUOKKA hashes passwords using PBKDF2-HMAC-SHA256 via Werkzeug.
+A mathematical one-way function that converts any input into a fixed-size scrambled string. "password123" → `scrypt:32768:8:1$salt$longhash`. Cannot be reversed. QUOKKA stores password hashes (not the passwords themselves) so even if the database is stolen, attackers cannot get the real passwords.
 
 **SMTP (Simple Mail Transfer Protocol)**  
-The standard internet protocol for sending email between servers. QUOKKA uses Gmail's SMTP server (`smtp.gmail.com:587`) to send OTP and password reset emails.
+The standard internet protocol for sending email. QUOKKA originally used Gmail's SMTP server but switched to the Brevo HTTP API because SMTP port 587 is often blocked by cloud hosting providers.
 
 **SSE (Server-Sent Events)**  
-A web standard for one-way real-time streaming from server to browser over a regular HTTP connection. The server sends events (lines of text) as they become available. QUOKKA uses SSE to stream AI response tokens to the browser in real time.
+A web standard for servers to push data to browsers over a single, long-lived HTTP connection. Data arrives as lines formatted `data: {...}\n\n`. In QUOKKA, each AI token is sent as an SSE event: `data: {"text": "Hello"}\n\n`. Simpler than WebSockets for one-directional server→client streaming.
 
 **Blueprint (Flask)**  
-A way to organize a Flask application into separate modules. Each Blueprint has its own routes, and they're all registered with the main `app` object. QUOKKA has four blueprints: `auth_bp`, `chat_bp`, `sessions_bp`, `upload_bp`.
+A Flask feature for organizing route handlers into separate modules. In QUOKKA, auth routes, chat routes, session routes, and upload routes are each in separate Blueprint objects (`auth_bp`, `chat_bp`, `sessions_bp`, `upload_bp`) that are registered with the main `app` in `app.py`. This keeps the code organized instead of having all routes in one giant file.
 
 **WSGI (Web Server Gateway Interface)**  
-A standard specification for how Python web applications communicate with web servers. Flask is a WSGI application. Gunicorn is a WSGI server. They talk to each other using this standard interface.
+A Python standard (PEP 3333) that defines how web servers (like Gunicorn) talk to Python web applications (like Flask). Think of it as a universal plug: any WSGI-compatible server can run any WSGI-compatible Python app. QUOKKA's `app.py` creates a WSGI-compatible Flask application (`app = Flask(__name__)`).
 
 **Gunicorn**  
-A production-grade Python WSGI HTTP server that spawns multiple worker processes to handle concurrent requests. It's the standard way to run Flask applications in production instead of Flask's built-in development server.
+A production-grade Python WSGI HTTP server. Flask's built-in development server is not suitable for production (single-threaded, not hardened). Gunicorn manages multiple worker processes, handles connection queuing, enforces timeouts, and is battle-tested for production deployments. QUOKKA uses it with 1 worker, sync class, and 120-second timeout.
 
 ---
 
-*End of QUOKKA Project Documentation Report*  
-*All information in this document was verified against the actual source code. Nothing is assumed or speculated.*
+*End of QUOKKA Project Documentation Report*
+
+---
+
+> **Report generated by:** Complete code analysis of all 30+ project files  
+> **Lines of code covered:** ~4,000+ lines across Python, JavaScript, HTML, and CSS  
+> **Completeness:** Every file, every endpoint, every technology, every security measure documented
