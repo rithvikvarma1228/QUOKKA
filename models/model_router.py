@@ -6,12 +6,11 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 GROQ_MODEL_MAP = {
-    "llama3.1:8b":  "llama-3.1-8b-instant",
-    "llama3.1:70b": "llama-3.3-70b-versatile",
+    "llama3.1:8b":  "openai/gpt-oss-20b",
+    "llama3.1:70b": "openai/gpt-oss-120b",
 }
 
-DEFAULT_MODEL = "llama-3.1-8b-instant"
-
+DEFAULT_MODEL = "openai/gpt-oss-20b"
 
 def ask_llm_stream(prompt, model="llama3.1:8b", temperature=0.7, provider=None):
     groq_model = GROQ_MODEL_MAP.get(model, DEFAULT_MODEL)
